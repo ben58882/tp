@@ -437,7 +437,10 @@ list, with separate current-view positions and stable IDs and wrapping labels fo
 IDs, schedule, subject, room and roster size. The subject is the card heading, followed by one line with the
 stable Lesson ID and schedule. `showlesson` switches the right pane to a scrolling detail view with
 the current roster and retained former-member attendance, both expanded immediately for undated and dated
-results. Missing dated records remain labelled `unrecorded`. Each panel scrolls independently, and lesson commands
+results. Detail rows, including the summary and section headings, share a virtualized list: controls are
+created for the viewport as it scrolls, while every roster and retained-attendance entry remains reachable in
+its original order. The hidden catalogue suppresses detail graphics to avoid duplicate row construction.
+Missing dated records remain labelled `unrecorded`. Each panel scrolls independently, and lesson commands
 never replace the people list. `HistoryListPanel` shares the right pane for dated records with current/former
 membership labels and refreshes after committed changes. See the
 [shared selector contract](#shared-lesson-target-contract).
@@ -1533,6 +1536,11 @@ the canonical
 API; selectors and cross-component invariants remain in the [shared contract](#shared-lesson-target-contract).
 The active `history` route reads retained entries without changing operational data.
 
+The marking command compares new or changed `present` outcomes with the current local date using the session's
+injected `Clock`. It requires `ack/future` for future presence, after normal model validation and before the staged
+transaction can be saved or published. Future `absent` outcomes and identical stored-status no-ops remain available
+without acknowledgement; the model can still load and retain valid future records.
+
 ### Future undo/redo and archiving
 
 No undo, redo, archive or restore route is registered. Failed-command rollback is already delivered
@@ -1766,6 +1774,9 @@ The [UG command summary](UserGuide.html#current-command-summary) and [selector r
 * 1b. The administrator requests attendance history instead, optionally for one lesson: PonHub shows retained dated entries, including former enrolments. With no entries, it shows an empty result; missing entries do not count as absences. An invalid request, unavailable student/lesson or wrong person role produces feedback and preserves the previous results. The use case ends without changing records.
 * 1c. The mark request is invalid, the person is unavailable or has the wrong role, the lesson/date/status is invalid, the date is on another weekday, or a new entry has no current enrolment: PonHub explains the problem without changing attendance. The administrator may revise the request at step 1.
 * 1d. Attendance already exists: a different status corrects that entry at step 2, including after unenrolment. The same status produces a no-change message and ends the use case without saving.
+* 1e. A new or changed future `present` outcome lacks explicit acknowledgement: PonHub warns about the date and
+  changes nothing. The administrator may acknowledge intentional future presence and repeat the request at step 1.
+  Future absence needs no acknowledgement, and acknowledging presence bypasses no other validation.
 * 2a. Saving fails: the shared save-failure outcome above applies, and the use case ends.
 
 **Postconditions:** On success, the occurrence has one recorded status, or its entry has been removed. History can be reviewed independently of current membership. Failed requests and no-change outcomes preserve attendance and views. Retained attendance continues to prevent student or lesson deletion. The people list is preserved.
@@ -2633,6 +2644,20 @@ For manual checks, use an isolated supported dataset:
 Use the active `unmark` route to remove the retained Attendance dependency before retrying Student deletion.
 Use the active `deletelesson` route to remove the empty Lesson before retrying Tutor deletion.
 
+### Future attendance acknowledgement
+
+Use the shared-lesson workflow's disposable dataset while Alex is enrolled in Monday Lesson `L1`, then run
+`list r/student` and verify Alex's current position. With a Monday after the computer's current local date
+(for example `2036-10-06` while that date remains in the future), check these outcomes:
+
+1. Enter `mark 1 lid/L1 d/2036-10-06 s/present`: expect a warning naming the supplied date and today, with
+   unchanged saved bytes and attendance. Repeat with `s/absent`: expect one saved future absence.
+2. Try to change that absence to `present` without acknowledgement: expect the warning and the absence retained.
+   Repeat with `ack/future`: expect one corrected present entry. Repeat the identical present command without
+   acknowledgement: expect no change, with unchanged saved bytes and no duplicate history entry.
+3. Add `ack/future` to a wrong-weekday date or a new key for an unenrolled Student: expect the original validation
+   rejection and unchanged data. Invalid or repeated `ack/` values must also be rejected.
+
 ### Active shared-lesson details and dated attendance (#99)
 
 `ShowLessonParser` accepts one `lid/LESSON_ID` and an optional `d/YYYY-MM-DD` in either order, rejecting missing,
@@ -2650,8 +2675,9 @@ it after enrolment, unenrolment, marking, correction, removal or restoration. A 
 so the previous detail and people view remain unchanged. If `deletelesson` removes the selected unreferenced
 Lesson, its result becomes empty and the context identifies the unavailable stable ID. `lessons` and lesson
 search switch back to their own sources. The normal lesson ListView remains for catalogue results; the detail
-uses a dedicated width-fitting ScrollPane and wrapping labels for long rosters/history. No roster row number is
-used as a person-command selector.
+uses a dedicated width-fitting virtualized list and wrapping labels for long rosters/history. Its row focus
+supports keyboard scrolling and never selects a person-command target. No roster row number is used as a
+person-command selector.
 
 UC-02/manual checks: show a shared Monday Lesson with two current Students, one recorded present and one
 unrecorded, then mark the second absent. Unenrol that Student and verify the dated absence moves to the labelled
