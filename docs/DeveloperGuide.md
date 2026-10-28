@@ -36,7 +36,7 @@ the [requirements appendix](#product-scope) records the target audience, value p
   and [JUnit 5](https://junit.org/junit5/).
 * The optional logo-click percussion cue was synthesized for PonHub at Vincent's direction
   with OpenAI Codex assistance, using oscillators and seeded noise without third-party audio samples.
-  The generator, checksum, replacement history and MIT reuse notice are recorded in
+  The generator, synthesis description and MIT reuse notice are recorded in
   [the audio resource note](https://github.com/AY2627S1-CS2103T-F13-3/tp/blob/master/src/main/resources/audio/README.md).
 * OpenAI Codex was used by Ernest Chua (`ErnestChuaa`), Benjamin Ng (`ben58882`),
   Yang Shuo (`ys000009`), Vincent Lin (`gugrusaurus`) and Zhu Zhi Yu (`ultramanarm`)
@@ -201,10 +201,8 @@ anchor and caret; Down beyond the newest submission restores them. A guarded tex
 preserves browsing, while a user edit or Tab replacement starts a new draft. Submitting resets browsing;
 closing the window discards the history. This UI recall is unrelated to persisted attendance history.
 
-The [20 October shell validation record](https://github.com/gugrusaurus/tp/tree/draft-lesson-board-layout-319/validation/shell-319-20261020)
-contains user-executed native checks and screenshots for the tested build. A later custom-scaling
-follow-up completed the 1280×720/150% checks; the earlier NOT RUN entry remains historical. The report
-records the remaining matrix and content-coverage limits separately.
+Use the [common window and layout checks](#common-window-and-layout-checks) to exercise the shell
+on the actual platform and display configuration being assessed.
 The command box exposes the routes described in [command integration](#current-increment-and-command-integration).
 
 ### Shared-lesson target contract
@@ -406,8 +404,6 @@ For executable acceptance steps, use [Person editing](#person-editing) and [Less
 The corresponding regression seams are `CanonicalEditIntegrationTest`, the edit-specific
 `CanonicalMainWindowTest` cases and `CanonicalLessonEditIntegrationTest`. They cover field intent,
 role/duplicate guards, identity and view refresh, no-ops, protected startup, failed saves, retry and reload.
-Historical coordination and its original source qualifications are retained in
-[#388](https://github.com/AY2627S1-CS2103T-F13-3/tp/issues/388#issuecomment-6367776297).
 
 <figure class="dg-figure" markdown="1">
 
@@ -434,8 +430,9 @@ results so committed changes refresh the display.
 The active canonical cards display immutable `PersonRecord` projections from the session's same observable people
 list, with separate current-view positions and stable IDs and wrapping labels for required and optional fields.
 `LessonListPanel` observes `Logic.getDisplayedLessons()` and renders wrapping `LessonCard`s with stable lesson/tutor
-IDs, schedule, subject, room and roster size. The subject is the card heading, followed by one line with the
-stable Lesson ID and schedule. `showlesson` switches the right pane to a scrolling detail view with
+IDs, schedule, subject, room and roster size. The subject is the card heading, followed by the
+stable Lesson ID on its own line and a separate Schedule row. `showlesson` switches the right pane to a
+scrolling detail view with
 the current roster and retained former-member attendance, both expanded immediately for undated and dated
 results. Detail rows, including the summary and section headings, share a virtualized list: controls are
 created for the viewport as it scrolls, while every roster and retained-attendance entry remains reachable in
@@ -1810,7 +1807,7 @@ The [UG command summary](UserGuide.html#current-command-summary) and [selector r
 
 **Command reference:** [Deleting a person](UserGuide.html#3-deleting-a-person-delete).
 
-**Future extensions:** Student archiving/restoration and undo remain proposals (US-31 and US-35).
+**Future extensions:** Student archiving/restoration and undo remain proposals (US-23 and US-31).
 
 #### UC-07: Get help and recover from a command-entry error
 
@@ -2064,14 +2061,7 @@ retain only the Lesson-specific field, scheduling, Tutor and history behavior.
    `help editlesson` is unavailable. Original rejected bytes remain unchanged; recovery requires correcting or
    restoring the file and restarting.
 
-#### Lesson edit owner verification record (#269)
-
-Yang Shuo's exact 20 October 2026 source-level owner record, including the team-master baseline `d1a2b9b5`,
-environment, commands and seven recorded PASS observations, remains preserved in
-[immutable team source `b68ec392`](https://github.com/AY2627S1-CS2103T-F13-3/tp/blob/b68ec39227a7bef7d587222d616dd2db422f9cd8/docs/DeveloperGuide.md#lesson-edit-owner-verification-record-269).
-It is historical source-level evidence, not packaged/native or independent acceptance.
-
-For the exact final candidate, rerun the focused
+For the candidate being assessed, run the focused
 `./gradlew test --tests ponhub.logic.CanonicalLessonEditIntegrationTest --no-daemon` check and the executable
 Lesson-edit procedure above. Report PASS, FAIL or NOT RUN for the empty/populated, conflict,
 roster/detail/history, no-op, invalid-selector, retained-weekday and failed-save cases.
@@ -2351,7 +2341,6 @@ and retain its per-trial results and unavailable combinations. The cases here ch
 
 Automated initialization/shutdown checks do not establish full-window interaction, physical scaling
 or packaged JAR-folder anchoring. Record actual results for the procedure above.
-Historical verification details are preserved in [#84](https://github.com/AY2627S1-CS2103T-F13-3/tp/issues/84#issuecomment-6140874125).
 
 ### Accidental second-window save protection
 
