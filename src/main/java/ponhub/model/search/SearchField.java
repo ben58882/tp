@@ -16,6 +16,7 @@ import ponhub.model.lesson.LessonDay;
 import ponhub.model.lesson.LessonTime;
 import ponhub.model.person.EducationLevel;
 import ponhub.model.person.Phone;
+import ponhub.model.query.LessonOrder;
 
 /**
  * Search prefixes, their category compatibility and their field-level matching rules.
@@ -32,10 +33,13 @@ public enum SearchField {
     DAY("d/", STUDENT, PARENT, TUTOR, LESSON),
     START_TIME("st/", STUDENT, PARENT, TUTOR, LESSON),
     END_TIME("et/", STUDENT, PARENT, TUTOR, LESSON),
+    FROM_TIME("from/", LESSON),
+    TO_TIME("to/", LESSON),
     SUBJECT("s/", STUDENT, PARENT, TUTOR, LESSON),
     TUTOR_NAME("tu/", STUDENT, PARENT, LESSON),
     TUTOR_PHONE("tp/", LESSON),
-    ROOM("rm/", STUDENT, PARENT, TUTOR, LESSON);
+    ROOM("rm/", STUDENT, PARENT, TUTOR, LESSON),
+    LESSON_ORDER("sort/", LESSON);
 
     private final String prefix;
     private final Set<SearchCategory> supportedCategories;
@@ -89,6 +93,7 @@ public enum SearchField {
         }
 
         return switch (this) {
+            case LESSON_ORDER -> LessonOrder.fromValue(trimmed).name().toLowerCase(Locale.ROOT);
             case PHONE, PARENT_PHONE, TUTOR_PHONE -> {
                 try {
                     yield new Phone(trimmed).value;
@@ -117,7 +122,7 @@ public enum SearchField {
                             + "Mon, Tue, Wed, Thu, Fri, Sat or Sun.");
                 }
             }
-            case START_TIME, END_TIME -> {
+            case START_TIME, END_TIME, FROM_TIME, TO_TIME -> {
                 try {
                     yield new LessonTime(trimmed).toString();
                 } catch (IllegalArgumentException e) {
@@ -137,7 +142,7 @@ public enum SearchField {
             return false;
         }
         return switch (this) {
-            case PHONE, PARENT_PHONE, TUTOR_PHONE, LEVEL, DAY, START_TIME, END_TIME -> {
+            case PHONE, PARENT_PHONE, TUTOR_PHONE, LEVEL, DAY, START_TIME, END_TIME, FROM_TIME, TO_TIME -> {
                 try {
                     yield query.equals(normalizeValue(candidate));
                 } catch (IllegalArgumentException e) {

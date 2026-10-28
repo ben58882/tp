@@ -165,13 +165,15 @@ public final class LessonQueries implements LessonQuerySource {
                 }
             }
         }
-        return candidates.stream().filter(lesson -> matches(criteria, lesson)).toList();
+        return LessonOrder.fromValue(criteria.getValue(SearchField.LESSON_ORDER).orElse("creation"))
+                .apply(candidates.stream().filter(lesson -> matches(criteria, lesson)).toList());
     }
 
     private boolean matches(SearchCriteria criteria, LessonView lesson) {
         return criteria.matches(SearchField.DAY, lesson.getTimeSlot().getDay().toString())
                 && criteria.matches(SearchField.START_TIME, lesson.getTimeSlot().getStartTime().toString())
                 && criteria.matches(SearchField.END_TIME, lesson.getTimeSlot().getEndTime().toString())
+                && matchesTimeWindow(criteria, lesson)
                 && criteria.matches(SearchField.SUBJECT, lesson.getSubject().getValue())
                 && criteria.matches(SearchField.TUTOR_NAME, lesson.getTutorName())
                 && criteria.matches(SearchField.TUTOR_PHONE, peopleById.get(lesson.getTutorId())
@@ -180,6 +182,19 @@ public final class LessonQueries implements LessonQuerySource {
                 && (criteria.getValue(SearchField.STUDENT_NAME).isEmpty()
                     || rosters.get(lesson.getLessonId()).stream()
                         .anyMatch(student -> criteria.matches(SearchField.STUDENT_NAME, student.getName())));
+    }
+
+    /**
+     * Tests positive interval overlap; a shared endpoint alone does not overlap.
+     */
+    private boolean matchesTimeWindow(SearchCriteria criteria, LessonView lesson) {
+        Optional<String> from = criteria.getValue(SearchField.FROM_TIME);
+        if (from.isEmpty()) {
+            return true;
+        }
+        String to = criteria.getValue(SearchField.TO_TIME).orElseThrow();
+        return lesson.getTimeSlot().getStartTime().toString().compareTo(to) < 0
+                && lesson.getTimeSlot().getEndTime().toString().compareTo(from.orElseThrow()) > 0;
     }
 
     private void requirePerson(PersonId id, PersonRole role) {

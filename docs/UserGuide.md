@@ -151,10 +151,10 @@ session's catalogue. A protected session permits only `help`, `list` and `exit`;
 | [Delete shared lesson](#4-creating-shared-lessons-and-other-lesson-operations) | `deletelesson lid/LESSON_ID` | `deletelesson lid/L1` |
 | [List people](#2-listing-people-list) | `list [r/ROLE]` | `list r/student` |
 | [Search people](#searching-people-search) | `search c/CATEGORY [FILTER/VALUE]...` | `search c/student n/Alex d/Mon s/Math` |
-| [List shared lessons](#listing-and-searching-shared-lessons) | `lessons [STUDENT_INDEX]` | `lessons` |
+| [List shared lessons](#listing-and-searching-shared-lessons) | <code>lessons [STUDENT_INDEX] [sort/creation&#124;schedule]</code> | `lessons` |
 | [Attendance history](#7-recording-attendance-and-retrieving-history) | <code>history STUDENT_INDEX [lid/LESSON_ID] [d/YYYY-MM-DD] [s/present&#124;absent]</code> | `history 1 lid/L1 s/absent` |
 | [Show lesson details](#listing-and-searching-shared-lessons) | `showlesson lid/LESSON_ID [d/YYYY-MM-DD]` | `showlesson lid/L1 d/2026-10-05` |
-| [Search shared lessons](#listing-and-searching-shared-lessons) | `search c/lesson [sn/NAME] [d/DAY] [st/HHMM] [et/HHMM] [s/SUBJECT] [tu/TUTOR_NAME] [tp/TUTOR_PHONE] [rm/ROOM]` | `search c/lesson tu/mei d/Mon` |
+| [Search shared lessons](#listing-and-searching-shared-lessons) | <code>search c/lesson [sn/NAME] [d/DAY] [st/HHMM] [et/HHMM] [s/SUBJECT] [tu/TUTOR_NAME] [tp/TUTOR_PHONE] [rm/ROOM] [from/HHMM to/HHMM] [sort/creation&#124;schedule]</code> | `search c/lesson tu/mei d/Mon` |
 | [Get help](#viewing-command-help-help) | `help [COMMAND]` | `help add` |
 | Exit | `exit` | `exit` |
 
@@ -369,11 +369,11 @@ use `n/` for the Tutor's own name in this category.
 
 **Formats:**
 
-* `lessons [STUDENT_INDEX]`
-* `search c/lesson [sn/STUDENT_NAME] [d/DAY] [st/HHMM] [et/HHMM] [s/SUBJECT] [tu/TUTOR_NAME] [tp/TUTOR_PHONE] [rm/ROOM]`
+* `lessons [STUDENT_INDEX] [sort/creation|schedule]`
+* `search c/lesson [sn/STUDENT_NAME] [d/DAY] [st/HHMM] [et/HHMM] [s/SUBJECT] [tu/TUTOR_NAME] [tp/TUTOR_PHONE] [rm/ROOM] [from/HHMM to/HHMM] [sort/creation|schedule]`
 
 The right-hand lesson panel initially shows the full catalogue. `lessons` restores it after a lesson search or
-student selection. Every shared lesson appears once in creation order, including empty rosters. Cards show the
+student selection. Every shared lesson appears once in creation order by default, including empty rosters. Cards show the
 subject as the heading, followed by a separate identity line with the stable Lesson ID. Labelled fields show the
 schedule, tutor name and ID, room and the number of currently enrolled students.
 The lesson heading identifies the selected Student ID or active filters even after another command changes
@@ -386,6 +386,12 @@ visible person once. A stable ID such as `S1`, a lesson ID, zero, negative or ou
 or combined selector, or a position occupied by a Tutor/Parent is rejected. Changing the people filter later
 does not change which Student's lessons are being shown. Attendance retained after unenrolment does not make a
 lesson part of that Student's current enrolments; use `history` to inspect retained records.
+
+Append `sort/schedule` to `lessons`, `lessons 1` or a Lesson search to order results from Monday to Sunday,
+then by start time and numeric stable Lesson ID. For example, `lessons sort/schedule` shows a weekly view;
+`search c/lesson d/Mon sort/schedule` shows Monday's matches by start time. `sort/creation` or omitting
+`sort/` restores creation order on that request. The chosen order survives saved changes while that view is
+active, but is not saved across restarts. People positions and stable Lesson IDs stay unchanged.
 
 For Lesson search, use `search c/lesson` with the filters in the
 [search matrix](#6-searching-people-and-shared-lessons). A search starts from the complete catalogue rather
@@ -513,6 +519,10 @@ The role/search filter stays active and results are re-evaluated. A renamed pers
 name search; recheck positions before the next indexed command. Lessons, rosters, attendance and counters
 retain their identities. A tutor rename updates current lesson labels. Changing `pp/`, or a parent's `p/`,
 recomputes exact-phone relationships without changing anyone else's stored phone.
+
+If an existing link is removed, the successful result lists each affected Parent/Student ID pair, including people hidden by the current filter.
+Update the corresponding phone values to restore a link; changing one record never updates the other automatically.
+
 Protected sessions reject edits. Invalid input does not write. Save errors preserve the previous live data and view;
 follow the [unsuccessful-save recovery steps](#checking-unsuccessful-saves-in-the-current-build) for the stored file.
 <!-- @@author -->
@@ -736,10 +746,12 @@ and `search c/lesson` includes Lessons with empty rosters. The complete active f
 | `d/` | Lesson weekday | Yes | Yes | Yes | Yes |
 | `st/` | Lesson start time | Yes | Yes | Yes | Yes |
 | `et/` | Lesson end time | Yes | Yes | Yes | Yes |
+| `from/`, `to/` | Paired Lesson time window | — | — | — | Yes |
 | `s/` | Lesson subject | Yes | Yes | Yes | Yes |
 | `tu/` | Lesson tutor's name | Yes | Yes | — | Yes |
 | `tp/` | Lesson tutor's exact phone | — | — | — | Yes |
 | `rm/` | Lesson room | Yes | Yes | Yes | Yes |
+| `sort/` | Lesson order: `creation` or `schedule` | — | — | — | Yes |
 
 Name, email, address, associated Student name, subject, Tutor name and room match case-insensitive text
 fragments. Text queries trim surrounding whitespace and collapse repeated spaces. For example, `n/al` can
@@ -759,6 +771,13 @@ weekday filters match a complete allowed value, ignoring case: `P1`–`P6`, `S1`
 Either time may be supplied alone; together, end must be later than start on the same day. Missing optional
 contacts do not match a supplied filter. Unsupported, category-incompatible, blank or repeated prefixes,
 invalid values, slashes and line breaks in values are rejected before replacing either result panel.
+
+For a Lesson time window, supply both `from/HHMM` and `to/HHMM`, with `from` earlier than `to` on
+one day. The result contains Lessons that overlap any positive part of that window. A Lesson ending at
+`from`, or starting at `to`, does not match. For example, with Monday Lessons 1600–1700 and 1700–1800,
+`search c/lesson d/Mon from/1630 to/1730` returns both, while `from/1700 to/1800` returns only
+the second. Without `d/`, the window is applied to each weekday. Combine it with any other supported
+Lesson filters; `st/` and `et/` retain their exact-time meaning. Overnight windows are unsupported.
 
 <a id="relationship-search-rules"></a>
 
@@ -785,7 +804,8 @@ context. With only `sn/`, a Parent's matching child need not have a Lesson. With
 Lesson can match a Tutor or Lesson search. Different Parent records with the same exact phone can link to the
 same children.
 
-Each matching stable person or Lesson ID appears once, in creation order. People cards include the matching
+Each matching stable person or Lesson ID appears once. People remain in creation order; Lessons use creation
+order unless `sort/schedule` is requested. People cards include the matching
 Student and Lesson context relevant to the query; several matching Lessons add context rather than duplicate
 cards. Likewise, several matching Students in one Lesson produce one Lesson result. A valid search with no
 matches succeeds with `Found 0 student(s).`, `Found 0 parent(s).`, `Found 0 tutor(s).` or `Found 0 lesson(s).`.
