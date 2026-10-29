@@ -456,8 +456,9 @@ results. Detail rows, including the summary and section headings, share a virtua
 created for the viewport as it scrolls, while every roster and retained-attendance entry remains reachable in
 its original order. The hidden catalogue suppresses detail graphics to avoid duplicate row construction.
 Missing dated records remain labelled `unrecorded`. Each panel scrolls independently, and lesson commands
-never replace the people list. `HistoryListPanel` shares the right pane for dated records with current/former
-membership labels and refreshes after committed changes. See the
+never replace the people list. `HistoryListPanel` shares the right pane for dated records with an **Enrolment Status:**
+field showing `currently enrolled` or `not currently enrolled` from the Lesson's current roster, independently of the
+attendance date and present/absent status. It refreshes after committed changes. See the
 [shared selector contract](#shared-lesson-target-contract).
 
 The optional **All lessons**, **Student lessons** and **Attendance history** buttons share a wrapping `FlowPane`
@@ -1388,8 +1389,15 @@ names, metadata, captions and values without changing Lesson/history styling or 
 `PersonRecordListPanel` fits cards to cell width, updates positions when cells are reused, and supplies count,
 empty placeholder and vertical scrolling for tall cards. `PeopleView.resultContextProperty()` supplies the
 current all-people, role-list or normalized search scope through Logic. The panel retains that heading and
-filter-reset guidance independently of command feedback; long headings have a bounded, keyboard-scrollable
-area so every criterion and the records remain reachable. Neither projection nor panel owns writable records.
+filter-reset guidance independently of command feedback. The heading's ScrollPane remains bounded to 64
+logical pixels. Scoped scrollbar arrow padding and thumb insets keep the thumb paintable even at the
+24-pixel minimum, without allocating more space at the expense of the people list. Its focus-traversable
+property binds to content height exceeding viewport height, so Tab and
+Shift+Tab can reach overflowing criteria while short headings add no stop. The existing ScrollPane keyboard
+behavior handles arrows, Page Up/Down and Home/End. Accessible text follows the complete heading, and the
+visible hint identifies the keyboard route when it overflows. A reserved one-pixel border turns orange on
+focus without changing wrapping or viewport size. Scope changes reset scroll to the top; resize updates the
+overflow binding. Neither projection nor panel owns writable records.
 
 Each present contact detail carries an explicit copyable flag; missing values and the education level do not.
 `PersonRecordCard` adds a standard, focusable **Copy** button with a contact/person accessible name.
@@ -1474,7 +1482,14 @@ input is valid. Prefixes are lowercase, order-independent and unique within a co
 
 Text query values are trimmed, have repeated spaces collapsed, and are case-normalized with `Locale.ROOT`. Filters
 use case-insensitive substring matching; fragments need not form a complete valid field value. Thus `n/al` matches
-`Sally Tan` and `s/Math` matches `Add Math`. This agrees with canonical name and address normalization.
+`Sally Tan` and `s/Math` matches `Add Math`. `SearchField` lowercases both text queries and candidates with
+`Locale.ROOT`, then maps final sigma `ς` to ordinary sigma `σ`. This makes `Σ`/`σ`/`ς` equivalent in partial,
+internal, final and complete-name searches across all shared text fields. It deliberately preserves the existing
+lowercase policy otherwise: no sharp-S-to-`ss` expansion, accent removal or canonical Unicode normalization.
+This comparison is search-only: stored/displayed names, duplicate keys and `TutorResolver` retain their existing
+contracts. In particular, existing `ς`/`σ` duplicate-key distinctions remain loadable; a search can return both
+records. Changing those identities needs a separate compatibility decision by the people/name owner, not a
+search-triggered migration or stricter loader.
 Lesson creation selects a tutor by normalized **full** name and optional exact phone; search `tu/` matches a tutor
 name **fragment**, while tutor-category own-name search uses `n/`.
 
@@ -2273,7 +2288,16 @@ are a manual checklist, not evidence that a display/scaling matrix has passed.
 1. In an isolated working folder, launch the application on a 1280×720 display at 150% scaling and on a 1920×1080 display at 100% and 125%. Record the OS, scaling, Java version and usable desktop work area. The complete window must fit inside that work area; menu actions, command entry, results and the people list must remain reachable. Logical-size previews are useful checks, but do not replace actual platform/scaling results.
 2. Resize to the minimum window size. Run `help add` and scroll to the final example. Scroll the people list to its last card. Expect separate usable result and people scrollbars, with the command box and menus still visible.
 3. Add role-aware people with a long valid name, postal address and unbroken email using the active syntax, such as `add r/tutor n/Alexandra Catherine Elizabeth Montgomery Wellington p/001234567890123 e/alexandracatherineelizabethmontgomerywellington@example.com a/123 Long Residential Avenue Clementi District Block 456 Unit 12-345 Singapore 123456`. Run `list` followed by `help add` to refresh the cards, then narrow, widen and narrow the window again. Expect full values to wrap within the card without horizontal overflow; scroll vertically to reach the bottom of a tall card and the final person. Canonical add does not accept tags.
-4. Close the application and restart with the retained preferences. Valid sizes and coordinates remain unchanged. In the isolated folder, test an oversized saved window, coordinates from a removed monitor and a still-connected monitor to the left or above the primary display. Expect an oversized/offscreen window to fit a current work area, while valid secondary-monitor coordinates remain usable.
+4. Submit a people search with enough long filters to overflow its heading, including a valid zero-result
+   search. At compact and wide widths, use Tab/Shift+Tab to reach the heading and check its orange focus border
+   and visible keyboard hint. Up/Down, Page Up/Down and Home/End must reveal the complete text; Tab and
+   Shift+Tab must leave it. Check the mouse wheel and visible scrollbar thumb. From the command box, blank or
+   unmatched input must still traverse and a matching command prefix must still complete; Shift+Tab leaves
+   matching input. Keep a command draft and selected person, focus the heading, then record the draft's
+   caret/selection and scroll: draft text, caret/selection, active filters, selected person and saved bytes must
+   remain unchanged by scrolling. Normal TextField focus traversal can reset its text selection. Resize a shorter heading until it fits;
+   it should leave the traversal route. Run `list`: the heading resets to the top and no longer adds a stop.
+5. Close the application and restart with the retained preferences. Valid sizes and coordinates remain unchanged. In the isolated folder, test an oversized saved window, coordinates from a removed monitor and a still-connected monitor to the left or above the primary display. Expect an oversized/offscreen window to fit a current work area, while valid secondary-monitor coordinates remain usable.
 
 Automated bounds regressions cover scaled work areas, desktop bars, removed and secondary monitors, partial overlap and invalid saved dimensions. Actual-FXML layout checks use isolated fixture data; they do not establish Windows or Linux font/scaling behavior. Keep real display results in issue #128.
 
@@ -2800,14 +2824,17 @@ automated tooltip-skin and command-window regressions in `ResultHeadingTooltipTe
 
 1. Keep a filtered people list where a Student's displayed position differs from their stable ID suffix. Run
    `history STUDENT_INDEX`, then add `lid/LESSON_ID` for an existing Lesson. Verify the same Student's retained
-   entries, newest date first and then numeric Lesson ID, with stable IDs, status and current/former membership.
+   entries, newest date first and then numeric Lesson ID, with stable IDs, present/absent status and an
+   **Enrolment Status:** field showing `currently enrolled` or `not currently enrolled` from the current roster.
    An existing Student or selected existing Lesson without records produces a successful empty result.
    Add `s/absent`, then `d/YYYY-MM-DD`, using dates/statuses already recorded in the fixture. Verify exact-date
    matching, conjunctive Lesson/date/status combinations in either order, the heading's active criteria and a
    successful empty result for nonmatching filters. `history STUDENT_INDEX` clears all filters. Invalid dates,
    unknown statuses and repeated/unknown prefixes preserve the previous view and saved bytes.
 2. Mark and correct a dated key while history is open, then unenrol the Student. Verify immediate committed refresh
-   and a former-member label without losing the record. Remove the retained key with `unmark`; a repeat is a no-op.
+   and `not currently enrolled` without losing the record or changing its date/status. Re-enrol the Student and
+   verify `currently enrolled` returns for the same historical record. Unenrol again, then remove the retained key
+   with `unmark`; a repeat is a no-op.
    Restart and repeat the query to verify persistence. A missing dated key is unrecorded, never an absent entry.
    Repeat with `s/absent`: correcting an absence to present removes it from the filtered view, and correcting a
    present record to absent adds it in query order. Filters survive committed refreshes and later people filtering.
