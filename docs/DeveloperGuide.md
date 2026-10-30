@@ -207,6 +207,18 @@ Use the [common window and layout checks](#common-window-and-layout-checks) to e
 on the actual platform and display configuration being assessed.
 The command box exposes the routes described in [command integration](#current-increment-and-command-integration).
 
+### Raw command input protection (#572)
+
+`CommandBox` filters raw replacements with a `TextFormatter` before JavaFX can silently remove controls.
+ISO controls and Unicode line/paragraph separators reject the entire replacement. A rejection blocks Enter
+until the text changes; caret movement alone cannot submit the preserved draft. This also covers the
+control's paste action and context menu. Parser validation remains a separate boundary.
+
+For a packaged native check in a disposable store, add a contact with an email. Paste a name containing
+a newline, then paste `edit 1 e/` followed by a newline. Expect rejection, unchanged stored contact data,
+and no execution on Enter. Repeat with a tab and CRLF, including replacement of a reversed selection.
+Correct the text and verify a normal command succeeds; an intentionally entered blank `e/` still clears email.
+
 ### Shared-lesson target contract
 
 The agreed design ([#60](https://github.com/AY2627S1-CS2103T-F13-3/tp/issues/60)) uses one canonical
@@ -834,6 +846,16 @@ the history selection. Unenrolment only changes current-membership context; it d
 These are source-level contracts; the separate [post-edit acceptance task (#268)](https://github.com/AY2627S1-CS2103T-F13-3/tp/issues/268)
 and final packaged/native checks retain their own evidence requirements.
 
+##### Query subscription lifetime (#574)
+
+`LessonQueries` strongly caches result lists only while their Student, Tutor or Lesson identity exists.
+Deletion first removes the active cache entry and clears its externally held result. Retired result identity tokens are weak
+keys, with IDs as values: the query source cannot keep either an unreferenced result or its ID alive after
+weak-map cleanup. A public read-only wrapper retains its `ResultList`, preserving externally held handles.
+On model restore, surviving retired handles rejoin the active cache and refresh automatically, retaining the
+existing restoration contract. A live but unassigned person or empty lesson remains strongly cached.
+This applies to student lessons, tutor schedules, rosters and both history routes.
+
 ##### Find exact contracts and regression checks
 
 Use [`LessonQuerySource`](https://github.com/AY2627S1-CS2103T-F13-3/tp/blob/master/src/main/java/ponhub/model/query/LessonQuerySource.java)
@@ -1118,6 +1140,23 @@ slash components, or reveal duplicates after normalization. Inspect JSON read-on
 additional working copy. The administrator supplies corrections and missing role information. Valid
 human edits to the supported schema must load; invalid edits follow [startup protection](#current-protected-startup).
 
+#### Preference JSON resource limits (#578)
+
+`JsonUtil` scans token text before object deserialization: numeric tokens are limited to 64 characters,
+and nesting to 64 containers including the root. This covers preference coordinates and dimensions,
+including unknown fields, without using numeric getters that could construct a large `BigInteger` first.
+Normal missing/default/extra-field preference behavior remains; `WindowPlacement` still fits dimensions
+and coordinates to the available desktop. This guard is independent of canonical schema detection.
+
+Read failures retain at most 512 characters of diagnostic detail plus a truncation marker. The logged warning
+and returned `DataLoadingException` share the bounded detail, without chaining Jackson's unbounded exception.
+`MainApp` recovers with reloadable default preferences while leaving operational data unchanged.
+
+Regression coverage checks numeric/depth boundaries, a million-digit coordinate, bounded warnings for a long
+invalid string, nonfinite dimensions and extreme coordinates, and full initialization/shutdown recovery with
+a 500,000-digit coordinate. Stress probes should use disposable files and a bounded subprocess rather than
+asserting a machine-specific duration in unit tests.
+
 ### Common classes
 
 `ponhub.commons` contains shared settings/value helpers, exceptions, JSON/file/string utilities
@@ -1258,7 +1297,12 @@ Existing duplicate keys and `TutorResolver` consume these canonical `Name` value
 editing therefore match canonical equivalents while retaining ambiguity and exact-phone checks. No schema
 change is needed: the loader constructs the same value and the writer saves its normalized display form.
 Name/address parser boundaries preserve controls for rejection; role-aware add rejects controls before extraction.
-Space normalization scans linearly; email rejects excessive length before a linear, constant-stack format scan,
+Space normalization scans linearly. Before NFC canonical reordering, Name rejects more than 400 code points
+after space normalization: each scalar in the supported Java 25 runtime canonically decomposes into at most
+four code points, so no spelling equivalent to a valid 100-code-point NFC name is excluded. This bounds
+normalization work while preserving decomposed accents, Hangul composition and the final 100-code-point limit.
+The constructor and static validator share this guard, including command and storage callers.
+Email rejects excessive length before a linear, constant-stack format scan,
 avoiding stack overflow on hostile repeated input. Phone/email parsing retains surrounding-whitespace trimming.
 
 The active `RoleAwareAddParser` and canonical loader use this policy. Previously accepted files outside it, including
@@ -2910,3 +2954,30 @@ configured operational path; use a separate disposable copy for each rejected-fi
    [legacy re-entry](#planned-protected-loading-and-legacy-upgrade) into a separate unused path. Verify
    explicit roles/required fields and that the original and backup remain unchanged. No silent conversion,
    record dropping, guessed roles or importer/recovery command is expected.
+
+### Numeric JSON resource boundary (#573)
+
+`JsonDataVersionDetector` classifies the document in a strict streaming pass before the codec builds its
+single tree. Besides the 64-container depth limit, non-version numeric tokens are limited to 64 characters
+(including signs, decimal points and exponents). Supported counters need at most 19 digits; their existing
+range checks still apply. String contents and array width are unaffected. Root `schemaVersion` values are
+classified lexically without constructing `BigInteger`: positive future integers remain unsupported,
+whereas zero, negative and non-integer versions remain invalid. Duplicate fields and trailing roots still fail.
+An oversized numeric token follows protected corrupt-file loading: preserve bytes and block operational writes.
+
+Regression checks cover the 64/65-character boundary, million-digit version classification and a 500,000-digit
+counter through protected loading. To inspect packaged behavior, use a disposable copy of a valid empty store,
+replace the STUDENT counter with an unquoted 500,000-digit integer and launch. Expect prompt protected startup,
+no overwritten file and no operational saves. Do not replace a real user's store.
+
+### Readable protected-load diagnostics (#575)
+
+`UiManager` shows concise protection/recovery guidance above a read-only, wrapped TextArea containing the
+complete diagnostic. The dialog starts within the owner's display work area and is resizable. The details
+receive initial keyboard focus and support caret scrolling, selection and normal copy shortcuts; Tab reaches
+OK, and Escape dismisses the dialog. A long unknown field or path cannot displace the summary or button with
+unbounded content height. Ordinary malformed-file errors use the same presentation.
+
+In a disposable packaged build, load a valid empty store with a 5,000-character unknown root field, then a
+separate `{bad` store. Check the visible summary, keyboard navigation to the final diagnostic text, selection/
+copy, Tab to OK and Escape. Confirm both rejected stores remain byte-identical after dismissal and shutdown.
