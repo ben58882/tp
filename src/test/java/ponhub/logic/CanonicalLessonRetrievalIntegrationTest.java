@@ -76,9 +76,9 @@ public class CanonicalLessonRetrievalIntegrationTest {
     public void realMembership_failedEnrolAndUnenrolPreserveBothResultModesThenRetryAndReload() throws Exception {
         for (String route : List.of("lessons si/1", "search c/lesson sn/Jamie s/Math")) {
             Path path = saveFixture();
-            AtomicBoolean rejectWrites = new AtomicBoolean(true);
+            AtomicBoolean shouldRejectWrites = new AtomicBoolean(true);
             CanonicalPeopleSession session = new CanonicalPeopleSession(new ProtectedPonHubDataStorage(path), state -> {
-                if (rejectWrites.get()) {
+                if (shouldRejectWrites.get()) {
                     throw new IOException("Injected membership save failure");
                 }
                 new JsonPonHubDataStorage(path).saveData(state);
@@ -99,7 +99,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
             assertEquals(kind, session.lessonResultKindProperty().get());
             assertEquals(beforePeople, session.getPeople());
             assertArrayEquals(bytes, Files.readAllBytes(path));
-            rejectWrites.set(false);
+            shouldRejectWrites.set(false);
             session.execute("enrol 1 lid/L4");
             assertTrue(displayed.stream().anyMatch(lesson -> lesson.getLessonId().toString().equals("L4")));
             var enrolledResults = List.copyOf(displayed);
@@ -110,14 +110,14 @@ public class CanonicalLessonRetrievalIntegrationTest {
             reloaded.execute(route);
             assertEquals(displayed.stream().map(LessonView::getLessonId).toList(),
                     reloaded.getDisplayedLessons().stream().map(LessonView::getLessonId).toList());
-            rejectWrites.set(true);
+            shouldRejectWrites.set(true);
             assertThrows(CommandException.class, () -> session.execute("unenrol 1 lid/L4"));
             assertEquals(enrolled, session.getDataSnapshot());
             assertEquals(enrolledResults, displayed);
             assertEquals(kind, session.lessonResultKindProperty().get());
             assertEquals(beforePeople, session.getPeople());
             assertArrayEquals(bytes, Files.readAllBytes(path));
-            rejectWrites.set(false);
+            shouldRejectWrites.set(false);
             session.execute("unenrol 1 lid/L4");
             assertFalse(displayed.stream().anyMatch(lesson -> lesson.getLessonId().toString().equals("L4")));
             assertSame(displayed, session.getDisplayedLessons());
@@ -135,7 +135,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
     public void catalogueAndStudentSelection_resolveCurrentPeoplePositionAndNeverSave() throws Exception {
         Path path = saveFixture();
         byte[] bytes = Files.readAllBytes(path);
-        CanonicalPeopleSession session = readOnlySession(path);
+        CanonicalPeopleSession session = createReadOnlySession(path);
         var people = session.getPeople();
         var results = session.getDisplayedLessons();
         var before = session.getDataSnapshot();
@@ -166,7 +166,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
     public void search_allSevenFiltersMatchOneLessonAndKeepPeopleSearch() throws Exception {
         Path path = saveFixture();
         byte[] bytes = Files.readAllBytes(path);
-        CanonicalPeopleSession session = readOnlySession(path);
+        CanonicalPeopleSession session = createReadOnlySession(path);
         session.execute("search c/student n/Jamie");
         var people = List.copyOf(session.getPeople());
         assertEquals("Found 1 lesson(s).", session.execute("search c/LeSsOn sn/aLeX d/mON st/0900 et/1000"
@@ -196,7 +196,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
     public void invalidCommands_preserveSelectedLessonsPeopleAndSavedBytes() throws Exception {
         Path path = saveFixture();
         byte[] bytes = Files.readAllBytes(path);
-        CanonicalPeopleSession session = readOnlySession(path);
+        CanonicalPeopleSession session = createReadOnlySession(path);
         session.execute("search c/lesson s/Math");
         var people = List.copyOf(session.getPeople());
         for (String arguments : List.of("si/", "si/0", "si/-1", "si/+1", "si/1.0", "si/2147483648",
@@ -235,7 +235,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
         assertThrows(CommandException.class, () -> empty.execute("lessons si/1"));
         assertEquals(ResultKind.SEARCH, empty.lessonResultKindProperty().get());
         assertFalse(Files.exists(path.getParent()));
-        CanonicalPeopleSession session = readOnlySession(saveFixture());
+        CanonicalPeopleSession session = createReadOnlySession(saveFixture());
         assertEquals("Showing 0 lesson(s).", session.execute("lessons si/6").getFeedbackToUser());
         assertEquals(ResultKind.STUDENT_LESSONS, session.lessonResultKindProperty().get());
         assertIds(session);
@@ -276,7 +276,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
 
     @Test
     public void helpAndProtectedStartup_advertiseOnlyPermittedRoutes() throws Exception {
-        CanonicalPeopleSession session = readOnlySession(saveFixture());
+        CanonicalPeopleSession session = createReadOnlySession(saveFixture());
         assertTrue(session.execute("help").getFeedbackToUser().contains("lessons -"));
         String lessonsHelp = session.execute("help LESSONS").getFeedbackToUser();
         assertTrue(lessonsHelp.contains("Usage: lessons [STUDENT_INDEX]"));
@@ -297,9 +297,9 @@ public class CanonicalLessonRetrievalIntegrationTest {
 
     @Test
     public void resultKinds_helpPeopleChangesAndFailedReadRoutesRetainAuthoritativeScope() throws Exception {
-        for (var route : resultRoutes().entrySet()) {
+        for (var route : getResultRoutes().entrySet()) {
             Path path = saveFixture();
-            CanonicalPeopleSession session = readOnlySession(path);
+            CanonicalPeopleSession session = createReadOnlySession(path);
             byte[] bytes = Files.readAllBytes(path);
             var kind = session.lessonResultKindProperty();
             assertSame(kind, session.lessonResultKindProperty());
@@ -345,7 +345,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
 
     @Test
     public void historyInvalidation_restoresEachRetainedLessonKindAfterCommittedDeletion() throws Exception {
-        for (var route : resultRoutes().entrySet()) {
+        for (var route : getResultRoutes().entrySet()) {
             CanonicalPeopleSession session = new CanonicalPeopleSession(saveFixture());
             session.execute(route.getKey());
             session.execute("list r/student");
@@ -368,11 +368,11 @@ public class CanonicalLessonRetrievalIntegrationTest {
 
     @Test
     public void failedSaveAndCommittedRefresh_preserveEveryResultKindAndHistoryContext() throws Exception {
-        for (var route : resultRoutes().entrySet()) {
+        for (var route : getResultRoutes().entrySet()) {
             Path path = saveFixture();
-            AtomicBoolean rejectWrites = new AtomicBoolean(true);
+            AtomicBoolean shouldRejectWrites = new AtomicBoolean(true);
             CanonicalPeopleSession session = new CanonicalPeopleSession(new ProtectedPonHubDataStorage(path), state -> {
-                if (rejectWrites.get()) {
+                if (shouldRejectWrites.get()) {
                     throw new IOException("Injected result-state save failure");
                 }
                 new JsonPonHubDataStorage(path).saveData(state);
@@ -393,7 +393,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
             assertTrue(session.historyViewActiveProperty().get());
             assertEquals(historyContext, session.historyResultContextProperty().get());
             assertArrayEquals(bytes, Files.readAllBytes(path));
-            rejectWrites.set(false);
+            shouldRejectWrites.set(false);
             session.execute(edit);
             assertEquals(route.getValue(), session.lessonResultKindProperty().get());
             assertTrue(session.historyViewActiveProperty().get());
@@ -405,7 +405,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
         }
     }
 
-    private static Map<String, ResultKind> resultRoutes() {
+    private static Map<String, ResultKind> getResultRoutes() {
         return Map.of("lessons", ResultKind.ALL_LESSONS, "lessons si/4", ResultKind.STUDENT_LESSONS,
                 "search c/lesson", ResultKind.SEARCH, "showlesson lid/L3", ResultKind.DETAIL);
     }
@@ -416,7 +416,7 @@ public class CanonicalLessonRetrievalIntegrationTest {
         return path;
     }
 
-    private CanonicalPeopleSession readOnlySession(Path path) {
+    private CanonicalPeopleSession createReadOnlySession(Path path) {
         return new CanonicalPeopleSession(new ProtectedPonHubDataStorage(path), state -> {
             throw new AssertionError("Retrieval must not call the snapshot writer");
         });

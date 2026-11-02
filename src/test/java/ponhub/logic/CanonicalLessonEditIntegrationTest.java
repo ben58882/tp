@@ -45,7 +45,7 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_allFields_preservesIdentityRosterHistoryPositionAndCounters() throws Exception {
-        CanonicalPeopleSession session = baseline("all-fields.json");
+        CanonicalPeopleSession session = createBaselineSession("all-fields.json");
         session.execute("mark 1 lid/L1 d/2026-10-05 s/present");
         session.execute("enrol 2 lid/L1");
         session.execute("mark 2 lid/L1 d/2026-10-05 s/absent");
@@ -53,7 +53,7 @@ public class CanonicalLessonEditIntegrationTest {
         PonHubDataState before = session.getDataSnapshot();
         List<LessonId> ids = before.lessons().stream().map(Lesson::getId).toList();
 
-        assertEquals(editedWithAttendance(), session.execute("editlesson rm/r4 tp/00333333 tu/tutor   TWO "
+        assertEquals(getEditedWithAttendance(), session.execute("editlesson rm/r4 tp/00333333 tu/tutor   TWO "
                 + "s/Advanced Math et/1045 lid/l1 st/0915 d/mon").getFeedbackToUser());
 
         PonHubDataState after = session.getDataSnapshot();
@@ -76,12 +76,12 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_formerAttendance_warnsForChangedDetailsButNotNoOpOrRemovedHistory() throws Exception {
-        CanonicalPeopleSession session = baseline("former-warning.json");
+        CanonicalPeopleSession session = createBaselineSession("former-warning.json");
         session.execute("mark 1 lid/L1 d/2026-10-05 s/present");
         session.execute("unenrol 1 lid/L1");
         PonHubDataState before = session.getDataSnapshot();
         session.execute("showlesson lid/L1 d/2026-10-05");
-        assertEquals(editedWithAttendance(), session.execute("editlesson lid/L1 s/Science").getFeedbackToUser());
+        assertEquals(getEditedWithAttendance(), session.execute("editlesson lid/L1 s/Science").getFeedbackToUser());
         LessonDetailView detail = (LessonDetailView) session.getDisplayedLessons().getFirst();
         assertEquals(new Subject("Science"), detail.getSubject());
         assertEquals(AttendanceStatus.PRESENT, detail.formerAttendance().getFirst().status());
@@ -98,7 +98,7 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_emptyAndPopulatedLessons_refreshesRosterDetailAndHistoryResults() throws Exception {
-        CanonicalPeopleSession session = baseline("result-views.json");
+        CanonicalPeopleSession session = createBaselineSession("result-views.json");
         session.execute("addlesson d/Wed st/1400 et/1500 s/English tu/Tutor One rm/R4");
         session.execute("lessons");
         var displayedLessons = session.getDisplayedLessons();
@@ -125,7 +125,7 @@ public class CanonicalLessonEditIntegrationTest {
         session.execute("showlesson lid/L1 d/2026-10-05");
         var displayedDetail = session.getDisplayedLessons();
 
-        assertEquals(editedWithAttendance(), session.execute("editlesson lid/L1 st/0915 et/1045 "
+        assertEquals(getEditedWithAttendance(), session.execute("editlesson lid/L1 st/0915 et/1045 "
                 + "s/Advanced Math tu/Tutor Two tp/00333333 rm/R6").getFeedbackToUser());
         assertSame(displayedDetail, session.getDisplayedLessons());
         LessonDetailView detail = (LessonDetailView) displayedDetail.getFirst();
@@ -165,7 +165,7 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_singleEndpointsAndSelfExclusion_allowValidPartialChanges() throws Exception {
-        CanonicalPeopleSession session = baseline("endpoints.json");
+        CanonicalPeopleSession session = createBaselineSession("endpoints.json");
 
         assertEquals("Edited lesson: L2.",
                 session.execute("editlesson lid/L2 st/1000").getFeedbackToUser());
@@ -182,7 +182,7 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_noOpAndRejectedConflicts_doNotSaveOrPublish() throws Exception {
-        Path noOpPath = baseline("no-op.json").getDataFilePath();
+        Path noOpPath = createBaselineSession("no-op.json").getDataFilePath();
         AtomicInteger saves = new AtomicInteger();
         CanonicalPeopleSession noOp = new CanonicalPeopleSession(new ProtectedPonHubDataStorage(noOpPath), state -> {
             saves.incrementAndGet();
@@ -211,7 +211,7 @@ public class CanonicalLessonEditIntegrationTest {
                 "Student S1 schedule overlap between L1 and L2."}
         };
         for (String[] testCase : conflicts) {
-            CanonicalPeopleSession session = baseline(testCase[0]);
+            CanonicalPeopleSession session = createBaselineSession(testCase[0]);
             PonHubDataState unchanged = session.getDataSnapshot();
             byte[] unchangedBytes = Files.readAllBytes(session.getDataFilePath());
             CommandException failure = assertThrows(CommandException.class, () -> session.execute(testCase[1]));
@@ -223,7 +223,7 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_wrongAndMissingSelectors_preserveResultsStateAndSavedBytes() throws Exception {
-        CanonicalPeopleSession session = baseline("selectors.json");
+        CanonicalPeopleSession session = createBaselineSession("selectors.json");
         session.execute("lessons");
         PonHubDataState before = session.getDataSnapshot();
         var displayed = session.getDisplayedLessons();
@@ -248,7 +248,7 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_retainedAttendanceRejectsDayChangeThenClearsObsoleteSelectedDate() throws Exception {
-        CanonicalPeopleSession session = baseline("weekday.json");
+        CanonicalPeopleSession session = createBaselineSession("weekday.json");
         session.execute("mark 1 lid/L1 d/2026-10-05 s/present");
         session.execute("enrol 2 lid/L1");
         session.execute("mark 2 lid/L1 d/2026-10-05 s/absent");
@@ -280,16 +280,16 @@ public class CanonicalLessonEditIntegrationTest {
 
     @Test
     public void execute_failedSavesAndProtectedStartup_preserveStateAndHideRoute() throws Exception {
-        CanonicalPeopleSession seeded = baseline("save-failure.json");
+        CanonicalPeopleSession seeded = createBaselineSession("save-failure.json");
         seeded.execute("mark 1 lid/L1 d/2026-10-05 s/present");
         Path path = seeded.getDataFilePath();
         for (IOException injected : List.of(new IOException("disk failure"),
                 new AccessDeniedException(path.toString()))) {
-            AtomicBoolean failSave = new AtomicBoolean(true);
+            AtomicBoolean shouldFailSave = new AtomicBoolean(true);
             AtomicInteger saves = new AtomicInteger();
             CanonicalPeopleSession session = new CanonicalPeopleSession(new ProtectedPonHubDataStorage(path), state -> {
                 saves.incrementAndGet();
-                if (failSave.get()) {
+                if (shouldFailSave.get()) {
                     throw injected;
                 }
                 new JsonPonHubDataStorage(path).saveData(state);
@@ -319,8 +319,8 @@ public class CanonicalLessonEditIntegrationTest {
             assertArrayEquals(unchangedBytes, Files.readAllBytes(path));
             assertEquals(1, saves.get());
 
-            failSave.set(false);
-            assertEquals(editedWithAttendance(),
+            shouldFailSave.set(false);
+            assertEquals(getEditedWithAttendance(),
                     session.execute("editlesson lid/L1 s/Changed Subject").getFeedbackToUser());
             assertEquals(2, saves.get());
             assertEquals(session.getDataSnapshot(), new CanonicalPeopleSession(path).getDataSnapshot());
@@ -340,13 +340,13 @@ public class CanonicalLessonEditIntegrationTest {
         assertEquals("{", Files.readString(rejectedPath));
     }
 
-    private static String editedWithAttendance() {
+    private static String getEditedWithAttendance() {
         return "Edited lesson: L1.\nWarning: retained attendance for L1 is displayed with current Lesson details. "
                 + "Dates and statuses are unchanged. Create a new Lesson for changes intended only "
                 + "for future occurrences.";
     }
 
-    private CanonicalPeopleSession baseline(String filename) throws Exception {
+    private CanonicalPeopleSession createBaselineSession(String filename) throws Exception {
         CanonicalPeopleSession session = new CanonicalPeopleSession(directory.resolve(filename));
         session.execute("add r/tutor n/Tutor One p/00111111");
         session.execute("add r/tutor n/Tutor Two p/00222222");

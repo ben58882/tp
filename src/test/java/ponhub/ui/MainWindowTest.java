@@ -84,13 +84,13 @@ public class MainWindowTest {
             new EducationLevel("P1"), new Phone("009876543210123"));
     private static final String LONG_PERSON_IDENTITY = "Student · ID: S1";
     private static final List<ContactDetails> TUTOR_CONTACTS = List.of(
-            contacts("Alice Pauline", "94351253", "alice@example.com", "123, Jurong West Ave 6, #08-111"),
-            contacts("Benson Meier", "98765432", "johnd@example.com", "311, Clementi Ave 2, #02-25"),
-            contacts("Carl Kurz", "95352563", "heinz@example.com", "wall street"),
-            contacts("Daniel Meier", "87652533", "cornelia@example.com", "10th street"),
-            contacts("Elle Meyer", "9482224", "werner@example.com", "michegan ave"),
-            contacts("Fiona Kunz", "9482427", "lydia@example.com", "little tokyo"),
-            contacts("George Best", "9482442", "anna@example.com", "4th street"));
+            createContacts("Alice Pauline", "94351253", "alice@example.com", "123, Jurong West Ave 6, #08-111"),
+            createContacts("Benson Meier", "98765432", "johnd@example.com", "311, Clementi Ave 2, #02-25"),
+            createContacts("Carl Kurz", "95352563", "heinz@example.com", "wall street"),
+            createContacts("Daniel Meier", "87652533", "cornelia@example.com", "10th street"),
+            createContacts("Elle Meyer", "9482224", "werner@example.com", "michegan ave"),
+            createContacts("Fiona Kunz", "9482427", "lydia@example.com", "little tokyo"),
+            createContacts("George Best", "9482442", "anna@example.com", "4th street"));
 
     @TempDir
     public Path tempDirectory;
@@ -157,12 +157,12 @@ public class MainWindowTest {
                 command.selectRange(9, 2);
                 byte[] before = Files.readAllBytes(tempDirectory.resolve("contacts.json"));
                 for (int click = 0; click < 68; click++) {
-                    logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                    logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                     assertEquals(Integer.toString(click + 1), badge.getText());
                     root.layout();
                     assertEquals(badgeWidth, badge.getWidth());
                 }
-                logo.getOnMouseClicked().handle(logoClick(MouseButton.SECONDARY));
+                logo.getOnMouseClicked().handle(createLogoClick(MouseButton.SECONDARY));
                 assertEquals("68", badge.getText());
                 assertTrue(Window.getWindows().stream().noneMatch(candidate -> candidate.getScene() != null
                         && candidate.getScene().getRoot() instanceof DialogPane));
@@ -172,7 +172,7 @@ public class MainWindowTest {
                         thresholdChanges.add(current);
                 badge.textProperty().addListener(counterListener);
                 try {
-                    logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                    logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                 } finally {
                     badge.textProperty().removeListener(counterListener);
                 }
@@ -200,7 +200,7 @@ public class MainWindowTest {
                 assertTrue(confetti.getChildren().isEmpty());
                 assertEquals("hub", badge.getText());
                 for (int click = 0; click < 69; click++) {
-                    logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                    logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                     if (click == 0) {
                         assertEquals("1", badge.getText());
                     }
@@ -226,14 +226,14 @@ public class MainWindowTest {
                 navigation.requestFocus();
                 Node logo = root.lookup("#ponhubWordmark");
                 for (int click = 0; click < 69; click++) {
-                    logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                    logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                 }
                 Window creditsWindow = Window.getWindows().stream()
                         .filter(candidate -> candidate.getScene() != null
                                 && candidate.getScene().getRoot() instanceof DialogPane)
                         .findFirst().orElseThrow();
                 for (int click = 0; click < 69; click++) {
-                    logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                    logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                 }
                 assertEquals(1, Window.getWindows().stream().filter(candidate -> candidate.getScene() != null
                         && candidate.getScene().getRoot() instanceof DialogPane).count());
@@ -261,7 +261,7 @@ public class MainWindowTest {
                 Node logo = root.lookup("#ponhubWordmark");
                 Label badge = (Label) root.lookup(".wordmark-hub");
                 for (int click = 0; click < 69; click++) {
-                    logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                    logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                 }
                 DialogPane credits = (DialogPane) Window.getWindows().stream()
                         .filter(candidate -> candidate.getScene() != null
@@ -299,21 +299,21 @@ public class MainWindowTest {
                 Region root = layoutWindow(window, 1000, 700);
                 Node logo = root.lookup("#ponhubWordmark");
                 Label badge = (Label) root.lookup(".wordmark-hub");
-                logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                 assertEquals("1", badge.getText());
                 PauseTransition firstReset = new PauseTransition(Duration.millis(1900));
                 firstReset.setOnFinished(event -> {
                     try {
                         assertEquals("hub", badge.getText());
-                        logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                        logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                         assertEquals("2", badge.getText());
-                        logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                        logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                         assertEquals("3", badge.getText());
                         PauseTransition nextReset = new PauseTransition(Duration.millis(1900));
                         nextReset.setOnFinished(resetEvent -> {
                             try {
                                 assertEquals("hub", badge.getText());
-                                logo.getOnMouseClicked().handle(logoClick(MouseButton.PRIMARY));
+                                logo.getOnMouseClicked().handle(createLogoClick(MouseButton.PRIMARY));
                                 assertEquals("4", badge.getText());
                                 finished.complete(null);
                             } catch (Throwable failure) {
@@ -353,12 +353,12 @@ public class MainWindowTest {
                 assertSame(command, focus);
                 assertFalse(logo.isMouseTransparent());
                 assertEquals(Cursor.HAND, logo.getCursor());
-                logo.getOnMouseClicked().handle(logoClick(MouseButton.SECONDARY));
-                assertEquals(0, worker.taskCount());
-                MouseEvent primary = logoClick(MouseButton.PRIMARY);
+                logo.getOnMouseClicked().handle(createLogoClick(MouseButton.SECONDARY));
+                assertEquals(0, worker.getTaskCount());
+                MouseEvent primary = createLogoClick(MouseButton.PRIMARY);
                 logo.getOnMouseClicked().handle(primary);
                 assertTrue(primary.isConsumed());
-                assertEquals(1, worker.taskCount());
+                assertEquals(1, worker.getTaskCount());
                 worker.runAll();
                 assertEquals("unfinished draft", command.getText());
                 assertEquals(2, command.getSelection().getStart());
@@ -377,7 +377,7 @@ public class MainWindowTest {
         });
     }
 
-    private static MouseEvent logoClick(MouseButton button) {
+    private static MouseEvent createLogoClick(MouseButton button) {
         return new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, button, 1,
                 false, false, false, false, false, false, false, false, false, true, null);
     }
@@ -444,19 +444,19 @@ public class MainWindowTest {
 
                 ListView<?> people = (ListView<?>) root.lookup("#personListView");
                 assertTrue(people.getHeight() >= 40, "The people view must retain a usable viewport.");
-                assertTrue(verticalScrollBar(people).isVisible(), "The populated list must be scrollable.");
+                assertTrue(findVerticalScrollBar(people).isVisible(), "The populated list must be scrollable.");
 
                 TextArea result = (TextArea) root.lookup("#resultDisplay");
                 result.layout();
                 assertTrue(result.isWrapText());
-                assertTrue(verticalScrollBar(result).isVisible(),
+                assertTrue(findVerticalScrollBar(result).isVisible(),
                         "Long feedback must have a scrollable result area at " + size[0] + "x" + size[1]
                                 + "; height=" + result.getHeight());
                 ScrollPane scrollPane = (ScrollPane) result.lookup(".scroll-pane");
                 assertTrue(scrollPane.getContent().getBoundsInLocal().getHeight()
                         > scrollPane.getViewportBounds().getHeight(), "Long feedback must exceed its viewport.");
                 assertEquals(0, result.getScrollTop(), 1, "Each size must begin at the top of the feedback.");
-                ScrollBar bar = verticalScrollBar(result);
+                ScrollBar bar = findVerticalScrollBar(result);
                 bar.setValue(bar.getMax());
             });
             runOnFxThread(() -> {
@@ -523,7 +523,7 @@ public class MainWindowTest {
                 assertLongFieldEndsReachable(people);
                 people.scrollTo(people.getItems().size() - 1);
                 root.layout();
-                ScrollBar bar = verticalScrollBar(people);
+                ScrollBar bar = findVerticalScrollBar(people);
                 bar.setValue(bar.getMax());
                 root.applyCss();
                 for (int pass = 0; pass < 3; pass++) {
@@ -641,7 +641,7 @@ public class MainWindowTest {
         return window;
     }
 
-    private static ContactDetails contacts(String name, String phone, String email, String address) {
+    private static ContactDetails createContacts(String name, String phone, String email, String address) {
         return new ContactDetails(new Name(name), Optional.of(new Phone(phone)),
                 Optional.of(new Email(email)), Optional.of(new Address(address)));
     }
@@ -686,7 +686,7 @@ public class MainWindowTest {
                 node.getId() + " must fit in the scene: " + bounds);
     }
 
-    private static ScrollBar verticalScrollBar(Node control) {
+    private static ScrollBar findVerticalScrollBar(Node control) {
         return control.lookupAll(".scroll-bar").stream()
                 .filter(ScrollBar.class::isInstance)
                 .map(ScrollBar.class::cast)
@@ -724,7 +724,7 @@ public class MainWindowTest {
                 contacts.getPhone().orElseThrow().value,
                 contacts.getEmail().orElseThrow().value,
                 contacts.getAddress().orElseThrow().value));
-        ScrollBar bar = verticalScrollBar(people);
+        ScrollBar bar = findVerticalScrollBar(people);
         Bounds viewport = people.localToScene(people.getBoundsInLocal());
         for (int step = 0; step <= 100 && !unseenValues.isEmpty(); step++) {
             bar.setValue(bar.getMin() + (bar.getMax() - bar.getMin()) * step / 100);

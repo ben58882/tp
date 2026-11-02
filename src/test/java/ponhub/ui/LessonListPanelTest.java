@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static ponhub.testutil.FxTestUtil.runOnFxThread;
 import static ponhub.testutil.LessonQueryTestData.createData;
-import static ponhub.testutil.LessonQueryTestData.lesson;
+import static ponhub.testutil.LessonQueryTestData.createLesson;
 
 import java.util.List;
 import java.util.Map;
@@ -193,9 +193,9 @@ public class LessonListPanelTest {
                             Optional.of(new Phone("91234567")), Optional.empty(), Optional.empty()))),
                     Map.of(PersonRole.TUTOR, 1L, PersonRole.STUDENT, 0L, PersonRole.PARENT, 0L));
             var data = new PonHubData(new PonHubDataState(people, List.of(
-                    lesson("L1", tutor, "Mon", "0000", "0100", "Subject ".repeat(6).strip(),
+                    createLesson("L1", tutor, "Mon", "0000", "0100", "Subject ".repeat(6).strip(),
                             "ROOM123456", Set.of()),
-                    lesson("L2", tutor, "Tue", "2300", "2359", "Last subject", "LASTROOM", Set.of())),
+                    createLesson("L2", tutor, "Tue", "2300", "2359", "Last subject", "LASTROOM", Set.of())),
                     List.of(), 2));
             for (double scale : new double[] {1.25, 1.5, 1, 2}) {
                 Region panel = new LessonListPanel(new LessonQueries(data).getLessonList()).getRoot();
@@ -230,7 +230,7 @@ public class LessonListPanelTest {
         }
         view.scrollTo(1);
         view.layout();
-        Optional<ScrollBar> vertical = visibleScrollBar(view, Orientation.VERTICAL);
+        Optional<ScrollBar> vertical = findVisibleScrollBar(view, Orientation.VERTICAL);
         if (vertical.isPresent()) {
             ScrollBar bar = vertical.orElseThrow();
             double previousMaximum;
@@ -266,7 +266,7 @@ public class LessonListPanelTest {
 
     private static void assertCatalogueFits(Region panel, double scale, double width) {
         ListView<LessonView> view = list(panel);
-        assertTrue(visibleScrollBar(view, Orientation.HORIZONTAL).isEmpty(),
+        assertTrue(findVisibleScrollBar(view, Orientation.HORIZONTAL).isEmpty(),
                 "Horizontal overflow at scale=" + scale + ", width=" + width);
         for (var node : view.lookupAll(".list-cell")) {
             ListCell<?> cell = (ListCell<?>) node;
@@ -298,7 +298,7 @@ public class LessonListPanelTest {
         }
     }
 
-    private static Optional<ScrollBar> visibleScrollBar(ListView<?> view, Orientation orientation) {
+    private static Optional<ScrollBar> findVisibleScrollBar(ListView<?> view, Orientation orientation) {
         return view.lookupAll(".scroll-bar").stream().map(ScrollBar.class::cast)
                 .filter(bar -> bar.getOrientation() == orientation && bar.isVisible()).findFirst();
     }

@@ -2,6 +2,7 @@ package ponhub.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,13 +46,13 @@ public class PonHubDataLessonTest {
     @BeforeEach
     public void setUp() {
         registry = new PeopleRegistry();
-        firstTutor = registry.addTutor(details("Alex Tan", "90000001"));
+        firstTutor = registry.addTutor(createDetails("Alex Tan", "90000001"));
         secondStudent = registry.addStudent(new ContactDetails(new Name("Second Student")),
                 new EducationLevel("P2"), new Phone("80000002"));
-        parent = registry.addParent(details("Parent Tan", "80000000"));
+        parent = registry.addParent(createDetails("Parent Tan", "80000000"));
         firstStudent = registry.addStudent(new ContactDetails(new Name("First Student")),
                 new EducationLevel("P1"), new Phone("80000001"));
-        secondTutorWithSameName = registry.addTutor(details("Alex Tan", "90000002"));
+        secondTutorWithSameName = registry.addTutor(createDetails("Alex Tan", "90000002"));
         attendanceOnlyStudent = registry.addStudent(
                 new ContactDetails(new Name("Attendance Only Student")),
                 new EducationLevel("P3"), new Phone("80000003"));
@@ -59,11 +60,11 @@ public class PonHubDataLessonTest {
 
     @Test
     public void addLesson_existingTutor_allocatesMonotonicIdsAndEmptyRosters() {
-        PonHubData data = dataWithAllocationHistory(5);
+        PonHubData data = createDataWithAllocationHistory(5);
 
-        Lesson firstLesson = data.addLesson(firstTutor.getId(), slot(LessonDay.MONDAY, "0900", "1000"),
+        Lesson firstLesson = data.addLesson(firstTutor.getId(), createTimeSlot(LessonDay.MONDAY, "0900", "1000"),
                 new Subject("Mathematics"), new Room("R1"));
-        Lesson secondLesson = data.addLesson(firstTutor.getId(), slot(LessonDay.MONDAY, "1000", "1100"),
+        Lesson secondLesson = data.addLesson(firstTutor.getId(), createTimeSlot(LessonDay.MONDAY, "1000", "1100"),
                 new Subject("Science"), new Room("R1"));
 
         assertEquals(new LessonId("L6"), firstLesson.getId());
@@ -77,18 +78,18 @@ public class PonHubDataLessonTest {
 
     @Test
     public void addLesson_overlappingTutorOrNormalizedRoom_rejectsWithoutConsumingId() {
-        PonHubData data = dataWithAllocationHistory(0);
-        Lesson firstLesson = data.addLesson(firstTutor.getId(), slot(LessonDay.MONDAY, "0900", "1000"),
+        PonHubData data = createDataWithAllocationHistory(0);
+        Lesson firstLesson = data.addLesson(firstTutor.getId(), createTimeSlot(LessonDay.MONDAY, "0900", "1000"),
                 new Subject("Mathematics"), new Room("r1"));
         PonHubDataState beforeRejections = data.exportState();
 
         assertThrows(IllegalArgumentException.class, () -> data.addLesson(firstTutor.getId(),
-                slot(LessonDay.MONDAY, "0930", "1030"), new Subject("English"), new Room("R2")));
+                createTimeSlot(LessonDay.MONDAY, "0930", "1030"), new Subject("English"), new Room("R2")));
         assertThrows(IllegalArgumentException.class, () -> data.addLesson(secondTutorWithSameName.getId(),
-                slot(LessonDay.MONDAY, "0930", "1030"), new Subject("English"), new Room(" R1 ")));
+                createTimeSlot(LessonDay.MONDAY, "0930", "1030"), new Subject("English"), new Room(" R1 ")));
 
         assertEquals(beforeRejections, data.exportState());
-        Lesson adjacentLesson = data.addLesson(firstTutor.getId(), slot(LessonDay.MONDAY, "1000", "1100"),
+        Lesson adjacentLesson = data.addLesson(firstTutor.getId(), createTimeSlot(LessonDay.MONDAY, "1000", "1100"),
                 new Subject("English"), new Room("R1"));
         assertEquals(new LessonId("L2"), adjacentLesson.getId());
         assertEquals(List.of(firstLesson, adjacentLesson), data.getLessons());
@@ -96,12 +97,12 @@ public class PonHubDataLessonTest {
 
     @Test
     public void addLesson_differentTutorAndRoomOrWeekday_allowsOverlap() {
-        PonHubData data = dataWithAllocationHistory(0);
-        Lesson firstLesson = data.addLesson(firstTutor.getId(), slot(LessonDay.MONDAY, "0900", "1000"),
+        PonHubData data = createDataWithAllocationHistory(0);
+        Lesson firstLesson = data.addLesson(firstTutor.getId(), createTimeSlot(LessonDay.MONDAY, "0900", "1000"),
                 new Subject("Mathematics"), new Room("R1"));
         Lesson differentTutorAndRoom = data.addLesson(secondTutorWithSameName.getId(),
-                slot(LessonDay.MONDAY, "0930", "1030"), new Subject("Science"), new Room("R2"));
-        Lesson differentDay = data.addLesson(firstTutor.getId(), slot(LessonDay.TUESDAY, "0900", "1000"),
+                createTimeSlot(LessonDay.MONDAY, "0930", "1030"), new Subject("Science"), new Room("R2"));
+        Lesson differentDay = data.addLesson(firstTutor.getId(), createTimeSlot(LessonDay.TUESDAY, "0900", "1000"),
                 new Subject("English"), new Room("R1"));
 
         assertEquals(List.of(firstLesson, differentTutorAndRoom, differentDay), data.getLessons());
@@ -111,33 +112,33 @@ public class PonHubDataLessonTest {
 
     @Test
     public void addLesson_missingOrWrongRoleTutor_rejectsCompleteChange() {
-        PonHubData data = dataWithAllocationHistory(0);
+        PonHubData data = createDataWithAllocationHistory(0);
         PonHubDataState initialState = data.exportState();
 
         assertThrows(IllegalArgumentException.class, () -> data.addLesson(new PersonId("T99"),
-                slot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")));
+                createTimeSlot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")));
         assertThrows(IllegalArgumentException.class, () -> data.addLesson(firstStudent.getId(),
-                slot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")));
+                createTimeSlot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")));
 
         assertEquals(initialState, data.exportState());
         assertEquals(new LessonId("L1"), data.addLesson(firstTutor.getId(),
-                slot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")).getId());
+                createTimeSlot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")).getId());
     }
 
     @Test
     public void addLesson_exhaustedAllocation_rejectsCompleteChange() {
-        PonHubData data = dataWithAllocationHistory(Long.MAX_VALUE);
+        PonHubData data = createDataWithAllocationHistory(Long.MAX_VALUE);
         PonHubDataState initialState = data.exportState();
 
         assertThrows(IllegalStateException.class, () -> data.addLesson(firstTutor.getId(),
-                slot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")));
+                createTimeSlot(LessonDay.MONDAY, "0900", "1000"), new Subject("Mathematics"), new Room("R1")));
 
         assertEquals(initialState, data.exportState());
     }
 
     @Test
     public void enrolStudent_existingRecords_updatesOnlySharedRoster() {
-        Lesson lesson = lesson("L4", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1", Set.of());
+        Lesson lesson = createLesson("L4", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1", Set.of());
         PonHubData data = new PonHubData(new PonHubDataState(registry.exportState(), List.of(lesson), List.of(), 7));
 
         Lesson firstEnrolment = data.enrolStudent(firstStudent.getId(), lesson.getId());
@@ -153,7 +154,7 @@ public class PonHubDataLessonTest {
 
     @Test
     public void enrolStudent_duplicateMissingOrWrongRole_rejectsWithoutChange() {
-        Lesson lesson = lesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
+        Lesson lesson = createLesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
                 Set.of(firstStudent.getId()));
         PonHubData data = new PonHubData(new PonHubDataState(registry.exportState(), List.of(lesson), List.of(), 1));
         PonHubDataState before = data.exportState();
@@ -172,12 +173,12 @@ public class PonHubDataLessonTest {
 
     @Test
     public void enrolStudent_studentClash_rejectsButAllowsAdjacentAndDifferentWeekday() {
-        Lesson first = lesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
+        Lesson first = createLesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
                 Set.of(firstStudent.getId()));
-        Lesson overlapping = lesson("L2", secondTutorWithSameName, LessonDay.MONDAY, "0930", "1030", "R2",
+        Lesson overlapping = createLesson("L2", secondTutorWithSameName, LessonDay.MONDAY, "0930", "1030", "R2",
                 Set.of());
-        Lesson adjacent = lesson("L3", firstTutor, LessonDay.MONDAY, "1000", "1100", "R1", Set.of());
-        Lesson differentDay = lesson("L4", firstTutor, LessonDay.TUESDAY, "0900", "1000", "R1", Set.of());
+        Lesson adjacent = createLesson("L3", firstTutor, LessonDay.MONDAY, "1000", "1100", "R1", Set.of());
+        Lesson differentDay = createLesson("L4", firstTutor, LessonDay.TUESDAY, "0900", "1000", "R1", Set.of());
         PonHubData data = new PonHubData(new PonHubDataState(registry.exportState(),
                 List.of(first, overlapping, adjacent, differentDay), List.of(), 4));
         PonHubDataState beforeClash = data.exportState();
@@ -194,9 +195,9 @@ public class PonHubDataLessonTest {
 
     @Test
     public void unenrolStudent_existingMembership_retainsAttendanceAndRejectsMissingMembership() {
-        Lesson lesson = lesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
+        Lesson lesson = createLesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
                 Set.of(firstStudent.getId(), secondStudent.getId()));
-        Attendance retained = attendance(firstStudent, lesson, LocalDate.of(2026, 10, 5));
+        Attendance retained = createAttendance(firstStudent, lesson, LocalDate.of(2026, 10, 5));
         PonHubData data = new PonHubData(new PonHubDataState(registry.exportState(), List.of(lesson),
                 List.of(retained), 1));
 
@@ -216,9 +217,9 @@ public class PonHubDataLessonTest {
 
     @Test
     public void state_overlappingTutorOrNormalizedRoom_rejectsRestoredCandidate() {
-        Lesson original = lesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1", Set.of());
-        Lesson tutorConflict = lesson("L2", firstTutor, LessonDay.MONDAY, "0930", "1030", "R2", Set.of());
-        Lesson roomConflict = lesson("L2", secondTutorWithSameName, LessonDay.MONDAY,
+        Lesson original = createLesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1", Set.of());
+        Lesson tutorConflict = createLesson("L2", firstTutor, LessonDay.MONDAY, "0930", "1030", "R2", Set.of());
+        Lesson roomConflict = createLesson("L2", secondTutorWithSameName, LessonDay.MONDAY,
                 "0930", "1030", "r1", Set.of());
 
         assertThrows(IllegalArgumentException.class, () -> new PonHubDataState(registry.exportState(),
@@ -229,35 +230,35 @@ public class PonHubDataLessonTest {
 
     @Test
     public void readApis_returnCanonicalImmutableRelationshipsInDeterministicOrder() {
-        Lesson firstLesson = lesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
+        Lesson firstLesson = createLesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
                 Set.of(firstStudent.getId(), secondStudent.getId()));
-        Lesson secondLesson = lesson("L2", firstTutor, LessonDay.TUESDAY, "1000", "1100", "R2",
+        Lesson secondLesson = createLesson("L2", firstTutor, LessonDay.TUESDAY, "1000", "1100", "R2",
                 Set.of(firstStudent.getId()));
-        Lesson thirdLesson = lesson("L3", secondTutorWithSameName, LessonDay.WEDNESDAY,
+        Lesson thirdLesson = createLesson("L3", secondTutorWithSameName, LessonDay.WEDNESDAY,
                 "1100", "1200", "R3", Set.of());
-        Lesson fourthLesson = lesson("L4", secondTutorWithSameName, LessonDay.THURSDAY,
+        Lesson fourthLesson = createLesson("L4", secondTutorWithSameName, LessonDay.THURSDAY,
                 "1200", "1300", "R4", Set.of());
-        Attendance firstAttendance = attendance(firstStudent, firstLesson, LocalDate.of(2026, 10, 5));
-        Attendance secondAttendance = attendance(secondStudent, firstLesson, LocalDate.of(2026, 10, 5));
-        Attendance historicalAttendance = attendance(attendanceOnlyStudent, thirdLesson, LocalDate.of(2026, 10, 7));
+        Attendance firstAttendance = createAttendance(firstStudent, firstLesson, LocalDate.of(2026, 10, 5));
+        Attendance secondAttendance = createAttendance(secondStudent, firstLesson, LocalDate.of(2026, 10, 5));
+        Attendance historicalAttendance = createAttendance(attendanceOnlyStudent, thirdLesson,
+                LocalDate.of(2026, 10, 7));
         PonHubData data = new PonHubData(new PonHubDataState(registry.exportState(),
                 List.of(firstLesson, secondLesson, thirdLesson, fourthLesson),
                 List.of(firstAttendance, secondAttendance, historicalAttendance), 4));
 
         List<Student> roster = data.getLessonRoster(firstLesson.getId());
         List<Lesson> studentLessons = data.getStudentLessons(firstStudent.getId());
-        List<Attendance> studentAttendance = data.getAttendanceForStudent(secondStudent.getId());
+        List<Attendance> retainedAttendance = data.getAttendance();
         List<Attendance> lessonAttendance = data.getAttendanceForLesson(firstLesson.getId());
 
         assertEquals(List.of(secondStudent, firstStudent), roster);
         assertEquals(List.of(firstLesson, secondLesson), studentLessons);
-        assertEquals(List.of(secondAttendance), studentAttendance);
+        assertEquals(List.of(firstAttendance, secondAttendance, historicalAttendance), retainedAttendance);
         assertEquals(List.of(firstAttendance, secondAttendance), lessonAttendance);
         assertTrue(data.getStudentLessons(attendanceOnlyStudent.getId()).isEmpty());
-        assertEquals(List.of(historicalAttendance), data.getAttendanceForStudent(attendanceOnlyStudent.getId()));
         assertThrows(UnsupportedOperationException.class, () -> roster.clear());
         assertThrows(UnsupportedOperationException.class, () -> studentLessons.clear());
-        assertThrows(UnsupportedOperationException.class, () -> studentAttendance.clear());
+        assertThrows(UnsupportedOperationException.class, () -> retainedAttendance.clear());
         assertThrows(UnsupportedOperationException.class, () -> lessonAttendance.clear());
 
         assertTrue(data.isPersonReferenced(firstStudent));
@@ -266,15 +267,17 @@ public class PonHubDataLessonTest {
         assertTrue(data.isPersonReferenced(secondTutorWithSameName));
         assertTrue(data.isPersonReferenced(attendanceOnlyStudent));
         assertFalse(data.isPersonReferenced(parent));
-        assertTrue(data.isLessonReferenced(firstLesson.getId()));
-        assertTrue(data.isLessonReferenced(secondLesson.getId()));
-        assertTrue(data.isLessonReferenced(thirdLesson.getId()));
-        assertFalse(data.isLessonReferenced(fourthLesson.getId()));
+        PonHubDataState retainedState = data.exportState();
+        assertThrows(IllegalArgumentException.class, () -> new PonHubData(data).removeLesson(firstLesson.getId()));
+        assertThrows(IllegalArgumentException.class, () -> new PonHubData(data).removeLesson(secondLesson.getId()));
+        assertThrows(IllegalArgumentException.class, () -> new PonHubData(data).removeLesson(thirdLesson.getId()));
+        assertEquals(fourthLesson, new PonHubData(data).removeLesson(fourthLesson.getId()));
+        assertSame(retainedState, data.exportState());
     }
 
     @Test
     public void referenceGuard_integratesWithPeopleRegistryRemovalPredicate() {
-        Lesson lesson = lesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
+        Lesson lesson = createLesson("L1", firstTutor, LessonDay.MONDAY, "0900", "1000", "R1",
                 Set.of(firstStudent.getId()));
         PonHubData data = new PonHubData(new PonHubDataState(registry.exportState(),
                 List.of(lesson), List.of(), 1));
@@ -286,36 +289,35 @@ public class PonHubDataLessonTest {
 
     @Test
     public void relationshipQueries_missingOrWrongRoleIdentity_reject() {
-        PonHubData data = dataWithAllocationHistory(0);
+        PonHubData data = createDataWithAllocationHistory(0);
 
         assertThrows(IllegalArgumentException.class, () -> data.getLessonRoster(new LessonId("L1")));
         assertThrows(IllegalArgumentException.class, () -> data.getStudentLessons(new PersonId("S99")));
         assertThrows(IllegalArgumentException.class, () -> data.getStudentLessons(firstTutor.getId()));
-        assertThrows(IllegalArgumentException.class, () -> data.getAttendanceForStudent(new PersonId("S99")));
         assertThrows(IllegalArgumentException.class, () -> data.getAttendanceForLesson(new LessonId("L1")));
-        assertThrows(IllegalArgumentException.class, () -> data.isLessonReferenced(new LessonId("L1")));
+        assertThrows(IllegalArgumentException.class, () -> data.removeLesson(new LessonId("L1")));
     }
 
-    private PonHubData dataWithAllocationHistory(long lastAllocatedLessonSequence) {
+    private PonHubData createDataWithAllocationHistory(long lastAllocatedLessonSequence) {
         return new PonHubData(new PonHubDataState(registry.exportState(), List.of(), List.of(),
                 lastAllocatedLessonSequence));
     }
 
-    private Lesson lesson(String id, Tutor tutor, LessonDay day, String startTime, String endTime, String room,
+    private Lesson createLesson(String id, Tutor tutor, LessonDay day, String startTime, String endTime, String room,
             Set<PersonId> studentIds) {
-        return new Lesson(new LessonId(id), tutor.getId(), slot(day, startTime, endTime),
+        return new Lesson(new LessonId(id), tutor.getId(), createTimeSlot(day, startTime, endTime),
                 new Subject("Mathematics"), new Room(room), studentIds);
     }
 
-    private LessonTimeSlot slot(LessonDay day, String startTime, String endTime) {
+    private LessonTimeSlot createTimeSlot(LessonDay day, String startTime, String endTime) {
         return new LessonTimeSlot(day, new LessonTime(startTime), new LessonTime(endTime));
     }
 
-    private Attendance attendance(Student student, Lesson lesson, LocalDate date) {
+    private Attendance createAttendance(Student student, Lesson lesson, LocalDate date) {
         return new Attendance(student.getId(), lesson.getId(), date, AttendanceStatus.PRESENT);
     }
 
-    private ContactDetails details(String name, String phone) {
+    private ContactDetails createDetails(String name, String phone) {
         return new ContactDetails(new Name(name), Optional.of(new Phone(phone)),
                 Optional.empty(), Optional.empty());
     }
