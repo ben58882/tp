@@ -10,6 +10,7 @@ import static ponhub.model.search.SearchCategory.TUTOR;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import ponhub.commons.util.StringUtil;
 import ponhub.model.lesson.LessonDay;
@@ -41,6 +42,8 @@ public enum SearchField {
     ROOM("rm/", STUDENT, PARENT, TUTOR, LESSON),
     LESSON_ORDER("sort/", LESSON);
 
+    private static final Pattern HORIZONTAL_SPACES_PATTERN = Pattern.compile("\\p{Zs}+");
+
     private final String prefix;
     private final Set<SearchCategory> supportedCategories;
 
@@ -51,13 +54,6 @@ public enum SearchField {
 
     public String getPrefix() {
         return prefix;
-    }
-
-    /**
-     * Returns an immutable set of categories accepting this filter.
-     */
-    public Set<SearchCategory> getSupportedCategories() {
-        return supportedCategories;
     }
 
     /**
@@ -77,7 +73,7 @@ public enum SearchField {
         return Arrays.stream(values())
                 .filter(field -> field.prefix.equals(prefix))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported search prefix '" + prefix + "'."));
+                .orElseThrow(() -> new IllegalArgumentException("Unknown search prefix '" + prefix + "'."));
     }
 
     /**
@@ -98,7 +94,7 @@ public enum SearchField {
                 try {
                     yield new Phone(trimmed).value;
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Search filter '" + prefix + "' requires 3-15 digits.");
+                    throw new IllegalArgumentException("Search filter '" + prefix + "': " + Phone.MESSAGE_CONSTRAINTS);
                 }
             }
             case LEVEL -> {
@@ -108,7 +104,7 @@ public enum SearchField {
                     checkArgument(level.equals(trimmed.toUpperCase(Locale.ROOT)), EducationLevel.MESSAGE_CONSTRAINTS);
                     yield level;
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Search filter 'l/' requires P1-P6, S1-S5, JC1 or JC2.");
+                    throw new IllegalArgumentException("Search filter 'l/': " + EducationLevel.MESSAGE_CONSTRAINTS);
                 }
             }
             case DAY -> {
@@ -118,8 +114,7 @@ public enum SearchField {
                     checkArgument(day.equals(trimmed.toLowerCase(Locale.ROOT)), LessonDay.MESSAGE_CONSTRAINTS);
                     yield day;
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Search filter 'd/' requires "
-                            + "Mon, Tue, Wed, Thu, Fri, Sat or Sun.");
+                    throw new IllegalArgumentException("Search filter 'd/': " + LessonDay.MESSAGE_CONSTRAINTS);
                 }
             }
             case START_TIME, END_TIME, FROM_TIME, TO_TIME -> {
@@ -130,7 +125,7 @@ public enum SearchField {
                             + "' requires a valid four-digit HHMM.");
                 }
             }
-            default -> normalizeTextCase(StringUtil.normalizeSpaces(trimmed));
+            default -> normalizeTextCase(trimmed);
         };
     }
 
@@ -154,10 +149,11 @@ public enum SearchField {
     }
 
     /**
-     * Retains locale-independent lowercase comparison while treating both lowercase sigma forms alike.
+     * Normalizes horizontal Unicode spaces and letter case, treating both lowercase sigma forms alike.
      * This search-only policy does not expand sharp S, strip accents or normalize canonical spelling.
      */
     private static String normalizeTextCase(String value) {
-        return value.toLowerCase(Locale.ROOT).replace('ς', 'σ');
+        String normalizedSpaces = HORIZONTAL_SPACES_PATTERN.matcher(value).replaceAll(" ");
+        return StringUtil.normalizeSpaces(normalizedSpaces).toLowerCase(Locale.ROOT).replace('ς', 'σ');
     }
 }

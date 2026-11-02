@@ -11,6 +11,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import ponhub.logic.parser.exceptions.ParseException;
+import ponhub.model.person.EducationLevel;
 import ponhub.model.search.SearchCategory;
 import ponhub.model.search.SearchCriteria;
 import ponhub.model.search.SearchField;
@@ -152,12 +153,60 @@ public class SearchCriteriaParserTest {
 
     @Test
     public void parse_unknownPrefixAfterText_throwsInsteadOfAbsorbingItIntoValue() {
-        assertThrows(ParseException.class, "Unsupported search prefix 'xyz/'.", () ->
+        assertThrows(ParseException.class, "Unknown search prefix 'xyz/'.", () ->
                 parser.parse("c/student n/Alex xyz/no p/91234567"));
         String[] prefixes = {"C/", "N/", "t/", "tp/", "lid/", "r/", "foo_bar/", "1/"};
         for (String prefix : prefixes) {
             assertThrows(ParseException.class, () -> parser.parse("c/student n/Alex " + prefix + "value"));
         }
+    }
+
+    @Test
+    public void parse_unknownBlankPrefix_reportsUnknownPrefixBeforeMissingValue() {
+        for (String arguments : new String[]{"c/student x/", "x/ c/student", "c/student n/Alex x/  "}) {
+            assertThrows(ParseException.class, "Unknown search prefix 'x/'.", () -> parser.parse(arguments));
+        }
+        assertThrows(ParseException.class, "Search prefix 'n/' requires a non-blank value.", () ->
+                parser.parse("c/student n/"));
+        assertThrows(ParseException.class, "Search prefix 'c/' requires a non-blank value.", () ->
+                parser.parse("c/ n/Alex"));
+    }
+
+    @Test
+    public void parse_categoryIncompatiblePrefix_namesTheCategoryInLowercase() {
+        assertThrows(ParseException.class, "Search prefix 'tu/' is not supported for tutor.", () ->
+                parser.parse("c/TUTOR tu/Mei"));
+    }
+
+    @Test
+    public void parse_nameMarkers_rejectsTheWholeSlashValueInEveryPrefixOrder() {
+        for (String marker : new String[]{"s/o", "d/o"}) {
+            for (String prefix : new String[]{"n/", "sn/", "tu/"}) {
+                String category = prefix.equals("n/") ? "student" : "lesson";
+                String name = prefix + "Ravi " + marker + " Kumar";
+                String error = marker.equals("s/o")
+                        ? "Ambiguous 's/o' after search name prefix '" + prefix + "'. "
+                                + "Search by a slash-free name fragment. "
+                                + "If you meant an s/ subject beginning with 'o', "
+                                + "put it before name filters or immediately after c/CATEGORY."
+                        : "Search filter '" + prefix
+                                + "' requires a non-blank value without slashes or line breaks.";
+                for (String arguments : new String[]{"c/" + category + " " + name,
+                    name + " c/" + category, "c/" + category + " " + name + " s/Math d/Mon",
+                    "d/Mon s/Math " + name + " c/" + category}) {
+                    assertThrows(ParseException.class, error, () -> parser.parse(arguments));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void parse_slashFreeNameAndRealLessonPrefixes_preservesSeparateFilters() throws Exception {
+        assertEquals(Map.of(SearchField.NAME, "ravi", SearchField.SUBJECT, "math", SearchField.DAY, "mon"),
+                parser.parse("c/student n/Ravi s/Math d/Mon").getFilters());
+        assertEquals(Map.of(SearchField.STUDENT_NAME, "anita", SearchField.TUTOR_NAME, "mei",
+                SearchField.SUBJECT, "o level math", SearchField.DAY, "mon"),
+                parser.parse("s/o level math tu/Mei sn/Anita d/Mon c/lesson").getFilters());
     }
 
     @Test
@@ -200,7 +249,7 @@ public class SearchCriteriaParserTest {
     public void parse_invalidLevel_throwsParseException() {
         for (String level : new String[]{"P0", "P7", "S0", "S6", "JC0", "JC3", "P01", "JC01", "Primary 1",
             "\u0000s2\u0000", "\u001bp1", "jc2\b"}) {
-            assertThrows(ParseException.class, "Search filter 'l/' requires P1-P6, S1-S5, JC1 or JC2.", () ->
+            assertThrows(ParseException.class, "Search filter 'l/': " + EducationLevel.MESSAGE_CONSTRAINTS, () ->
                     parser.parse("c/student l/" + level));
         }
     }

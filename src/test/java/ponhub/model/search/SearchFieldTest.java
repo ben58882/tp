@@ -57,7 +57,7 @@ public class SearchFieldTest {
     @Test
     public void fromPrefix_unsupportedPrefix_preservesError() {
         for (String prefix : List.of("", "n", "N/", " n/", "x/")) {
-            String error = "Unsupported search prefix '" + prefix + "'.";
+            String error = "Unknown search prefix '" + prefix + "'.";
             assertThrows(IllegalArgumentException.class, error, () -> SearchField.fromPrefix(prefix));
         }
         assertThrows(NullPointerException.class, () -> SearchField.fromPrefix(null));
@@ -88,23 +88,12 @@ public class SearchFieldTest {
 
         assertEquals(EnumSet.allOf(SearchField.class), categories.keySet());
         categories.forEach((field, supported) -> {
-            assertEquals(supported, field.getSupportedCategories(), field.name());
             for (SearchCategory category : SearchCategory.values()) {
                 assertEquals(supported.contains(category), field.isSupportedBy(category),
                         field + " in " + category);
             }
             assertThrows(NullPointerException.class, () -> field.isSupportedBy(null));
         });
-    }
-
-    @Test
-    public void getSupportedCategories_tutorNameRules_cannotBeChangedByCaller() {
-        Set<SearchCategory> categories = SearchField.TUTOR_NAME.getSupportedCategories();
-        assertEquals(Set.of(STUDENT, PARENT, LESSON), categories);
-        assertThrows(UnsupportedOperationException.class, () -> categories.add(TUTOR));
-        assertThrows(UnsupportedOperationException.class, () -> categories.remove(STUDENT));
-        assertFalse(SearchField.TUTOR_NAME.isSupportedBy(TUTOR));
-        assertTrue(SearchField.TUTOR_NAME.isSupportedBy(STUDENT));
     }
 
     @Test
@@ -120,7 +109,7 @@ public class SearchFieldTest {
     @Test
     public void normalizeValue_invalidPhones_preserveBothPrefixErrors() {
         for (SearchField field : List.of(SearchField.PHONE, SearchField.PARENT_PHONE, SearchField.TUTOR_PHONE)) {
-            String error = "Search filter '" + field.getPrefix() + "' requires 3-15 digits.";
+            String error = "Search filter '" + field.getPrefix() + "': " + Phone.MESSAGE_CONSTRAINTS;
             for (String phone : List.of("12", "1234567890123456", "+123", "12 3", "123-4", "12a", "１２３")) {
                 assertFalse(Phone.isValidPhone(phone), phone);
                 assertThrows(IllegalArgumentException.class, error, () -> field.normalizeValue(phone));
@@ -143,7 +132,7 @@ public class SearchFieldTest {
 
     @Test
     public void normalizeValue_invalidEducationLevels_preservesError() {
-        String error = "Search filter 'l/' requires P1-P6, S1-S5, JC1 or JC2.";
+        String error = "Search filter 'l/': " + EducationLevel.MESSAGE_CONSTRAINTS;
         for (String level : List.of("P0", "P7", "S0", "S6", "JC0", "JC3", "P01", "P", "Primary 1")) {
             assertFalse(EducationLevel.isValid(level), level);
             assertThrows(IllegalArgumentException.class, error, () -> SearchField.LEVEL.normalizeValue(level));
@@ -152,7 +141,7 @@ public class SearchFieldTest {
 
     @Test
     public void normalizeValue_levelWithBoundaryControls_preservesSearchRejectionDespiteDomainTrimming() {
-        String error = "Search filter 'l/' requires P1-P6, S1-S5, JC1 or JC2.";
+        String error = "Search filter 'l/': " + EducationLevel.MESSAGE_CONSTRAINTS;
         for (String level : List.of("\u0000s2\u0000", "\u001bp1", "jc2\b")) {
             assertTrue(EducationLevel.isValid(level));
             assertThrows(IllegalArgumentException.class, error, () -> SearchField.LEVEL.normalizeValue(level));
@@ -162,11 +151,11 @@ public class SearchFieldTest {
     @Test
     public void normalizeValue_exactFieldBoundaries_preservesWhitespaceAndControlRules() {
         Map<SearchField, String[]> cases = Map.of(
-                SearchField.PHONE, new String[]{"00123", "Search filter 'p/' requires 3-15 digits."},
-                SearchField.PARENT_PHONE, new String[]{"00123", "Search filter 'pp/' requires 3-15 digits."},
-                SearchField.LEVEL, new String[]{"S2", "Search filter 'l/' requires P1-P6, S1-S5, JC1 or JC2."},
+                SearchField.PHONE, new String[]{"00123", "Search filter 'p/': " + Phone.MESSAGE_CONSTRAINTS},
+                SearchField.PARENT_PHONE, new String[]{"00123", "Search filter 'pp/': " + Phone.MESSAGE_CONSTRAINTS},
+                SearchField.LEVEL, new String[]{"S2", "Search filter 'l/': " + EducationLevel.MESSAGE_CONSTRAINTS},
                 SearchField.DAY, new String[]{"mon",
-                    "Search filter 'd/' requires Mon, Tue, Wed, Thu, Fri, Sat or Sun."},
+                    "Search filter 'd/': " + LessonDay.MESSAGE_CONSTRAINTS},
                 SearchField.START_TIME, new String[]{"0000", "Search filter 'st/' requires a valid four-digit HHMM."},
                 SearchField.END_TIME, new String[]{"2359", "Search filter 'et/' requires a valid four-digit HHMM."});
         cases.forEach((field, values) -> {
@@ -198,7 +187,7 @@ public class SearchFieldTest {
 
     @Test
     public void normalizeValue_invalidWeekdays_preservesAcceptedSpellingsAndError() {
-        String error = "Search filter 'd/' requires Mon, Tue, Wed, Thu, Fri, Sat or Sun.";
+        String error = "Search filter 'd/': " + LessonDay.MESSAGE_CONSTRAINTS;
         for (String day : List.of("M", "Monday", "Tues", "Thur", "Funday", "ſun", "frı", "frİ")) {
             assertThrows(IllegalArgumentException.class, error, () -> SearchField.DAY.normalizeValue(day));
         }
@@ -248,6 +237,23 @@ public class SearchFieldTest {
             assertEquals("@", field.normalizeValue("@"), field.name());
             assertEquals("中", field.normalizeValue("中"), field.name());
         });
+    }
+
+    @Test
+    public void matchesValue_horizontalUnicodeSpaces_normalizesQueriesAndCandidates() {
+        for (SearchField field : getTextFields()) {
+            for (String space : List.of(" ", "\u00a0", "\u1680", "\u2000", "\u2001", "\u2002", "\u2003",
+                    "\u2004", "\u2005", "\u2006", "\u2007", "\u2008", "\u2009", "\u200a", "\u202f",
+                    "\u205f", "\u3000")) {
+                String query = field.normalizeValue("Alex" + space + space + "Tan");
+                assertEquals("alex tan", query, field + " " + space.codePointAt(0));
+                assertTrue(field.matchesValue(query, "Alex Tan"), field.name());
+                assertTrue(field.matchesValue("alex tan", "Alex" + space + "  " + space + "Tan"), field.name());
+            }
+            for (String control : List.of("\t", "\n", "\r", "\u0085", "\u2028", "\u2029")) {
+                assertFalse(field.matchesValue("alex tan", "Alex" + control + "Tan"), field.name());
+            }
+        }
     }
 
     @Test

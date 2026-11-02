@@ -219,7 +219,7 @@ Parsing errors and domain rule violations stop before step 3. Valid commands tha
 <figure class="dg-figure">
 <figcaption>UI controllers, panels and cards</figcaption>
 <div class="dg-ui-class-scroll" tabindex="0" role="region" aria-label="UI class diagram; scroll horizontally to see all classes">
-<a href="images/UiClassDiagram.png"><img src="images/UiClassDiagram.png" alt="UiManager implements Ui and creates MainWindow. MainWindow connects the UI components through Logic; each list panel creates its cards. The legend summarizes shared UiPart inheritance."></a>
+<a href="images/UiClassDiagram.png"><img src="images/UiClassDiagram.png" alt="UiManager implements Ui and creates MainWindow. MainWindow connects the UI components through Logic; each list panel creates its cards. A note summarizes shared UiPart inheritance."></a>
 </div>
 </figure>
 
@@ -304,7 +304,7 @@ with a `SnapshotWriter` callback bound to `ProtectedPonHubDataStorage.saveData`.
 failing writer to verify that a save error prevents proposed changes from reaching live records,
 allocation counters and views.
 
-`JsonPonHubDataStorage` provides a standalone file wrapper for tests and utilities, whereas the running application always uses `ProtectedPonHubDataStorage` so that rejected startup files can never be overwritten.
+`JsonPonHubDataStorage` is a test-source fixture wrapper for standalone JSON file access. The running application uses `ProtectedPonHubDataStorage` so that rejected startup files can never be overwritten.
 
 ### 3.6 Common utilities
 
@@ -512,9 +512,9 @@ Attendance records an outcome for one Student, one lesson and one date. It is st
 #### History after unenrolment
 
 <figure class="dg-figure">
-<figcaption>Unenrolment retains dated attendance</figcaption>
-<div class="dg-edit-flow-scroll" tabindex="0" role="region" aria-label="Unenrolment retains dated attendance">
-<a href="images/DomainAttendanceHistory.png"><img src="images/DomainAttendanceHistory.png" alt="For one Student, lesson and date, marking creates attendance, unenrolment retains it, and unmark removes the dated record."></a>
+<figcaption>Membership and dated attendance transitions</figcaption>
+<div class="dg-edit-flow-scroll" tabindex="0" role="region" aria-label="Membership and dated attendance transitions">
+<a href="images/DomainAttendanceHistory.png"><img src="images/DomainAttendanceHistory.png" alt="For one existing Student, lesson and date, enrolment and attendance change independently. Unenrolment retains attendance, unmark removes it, and retained dates remain correctable."></a>
 </div>
 </figure>
 
@@ -794,7 +794,7 @@ An invalid position, non-Student, or model rejection stops staging. Successful r
 <a id="tutor-relationship-search"></a>
 <a id="tutor-relationship-search-96"></a>
 
-`SearchCriteriaParser` parses `search c/CATEGORY ...` into an immutable `SearchCriteria` object. Every search requires `c/student`, `c/parent`, `c/tutor`, or `c/lesson` (case-insensitive); supplying only `c/CATEGORY` matches all records in that category.
+`SearchCriteriaParser` parses `search c/CATEGORY ...` into an immutable `SearchCriteria` object. It retains `s/o` and `d/o` inside name values so they cannot silently become subject/day filters. An adjacent `s/o` subject after a name is ambiguous and rejected with guidance to put the subject first or separate it with `c/CATEGORY`; ordinary subject filters remain order-independent. Every search requires `c/student`, `c/parent`, `c/tutor`, or `c/lesson` (case-insensitive); supplying only `c/CATEGORY` matches all records in that category.
 
 #### Supported search prefixes by category
 

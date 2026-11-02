@@ -142,11 +142,11 @@ Read this section once before diving into the individual commands. It explains t
 
 The PonHub window is split into four areas:
 * **People panel (left):** Shows student, tutor, and parent cards.
-* **Lesson and attendance panel (right):** Shows the lesson catalogue, one student's lessons, lesson details, or attendance history.
+* **Lesson board (right):** Shows the lesson catalogue, one student's lessons, lesson details, or attendance history.
 * **Feedback and help area (top):** Displays the response to your last command or `help` text.
 * **Command box (bottom):** Full-width text box where you type commands and press **Enter**.
 
-You can drag the dividers to resize the feedback area or adjust the width of the left and right panels. Each list scrolls independently, and long values wrap inside their cards.
+You can drag the dividers to resize the feedback and help area or adjust the width of the left and right panels. Each list scrolls independently, and long values wrap inside their cards.
 
 The heading above each panel always tells you which filter, selected student, or search query is currently displayed—even after another command changes the feedback message at the top. If a heading or result count is cut off, hover your mouse over it to read the full text in a tooltip.
 
@@ -166,7 +166,7 @@ Above the lists sit three shortcut buttons (**All lessons**, **Student lessons**
 Throughout this guide, command formats use these conventions:
 * **`UPPERCASE` words** are placeholders you replace with your own values (for example, `NAME` or `LESSON_ID`). **Lowercase words** such as `r/student` are typed exactly as shown.
 * **Square brackets `[ ]`** mark optional fields. **Vertical bars `|`** separate choices (for example, `s/present|absent` means type `s/present` or `s/absent`). **Three dots `...`** mean you can supply several filters. Never type `[ ]`, `|`, or `...` in your command.
-* **Prefixes** label each field, such as `n/Alex Tan` for a name. Always type command words and prefixes in lowercase. Prefixed fields can appear in any order, at most once per command (except in [`lessons`](#listing-lessons-lessons), where the optional student selector—including its legacy `si/STUDENT_INDEX` form—must come before `sort/creation|schedule`). Unknown or repeated prefixes are rejected, and there is no quoting or escaping syntax.
+* **Prefixes** label each field, such as `n/Alex Tan` for a name. Always type command words and prefixes in lowercase. Prefixed fields can appear in any order, at most once per command, with two exceptions: the [search name-marker exception](#search-name-marker-exception), and [`lessons`](#listing-lessons-lessons), where the optional student selector—including its legacy `si/STUDENT_INDEX` form—must come before `sort/creation|schedule`. Unknown or repeated prefixes are rejected, and there is no quoting or escaping syntax.
 * **Blank values:** If you do not have an optional value when adding a record, leave its prefix out altogether. Only `edit` accepts an empty prefix (such as `e/` or `a/`) to clear an existing optional field.
 * **Prefixes whose meaning depends on the command:**
   * `d/` takes a weekday (`Mon`–`Sun`) when creating, editing, or searching lessons, but takes a real `YYYY-MM-DD` calendar date in `mark`, `unmark`, `showlesson`, and `history`.
@@ -254,13 +254,14 @@ Use this table as a quick lookup. Click any action to read its full rules and ex
 | [Unmark attendance](#removing-an-attendance-record-unmark) | `unmark STUDENT_INDEX lid/LESSON_ID d/YYYY-MM-DD` | `unmark 1 lid/L1 d/2026-10-05` |
 | [View attendance history](#viewing-attendance-history-history) | <code>history STUDENT_INDEX [lid/LESSON_ID] [d/YYYY-MM-DD] [s/present&#124;absent]</code> | `history 1 lid/L1 s/absent` |
 | [Search people](#searching-people) | <code>search c/student&#124;parent&#124;tutor [FILTER/VALUE]...</code> | `search c/student n/Alex d/Mon s/Math` |
-| [Search lessons](#searching-lessons) | <code>search c/lesson [sn/NAME] [d/DAY] [st/HHMM] [et/HHMM] [s/SUBJECT] [tu/TUTOR_NAME] [tp/TUTOR_PHONE] [rm/ROOM] [from/HHMM to/HHMM] [sort/creation&#124;schedule]</code> | `search c/lesson tu/mei d/Mon` |
+| [Search lessons](#searching-lessons) | <code>search c/lesson [sn/STUDENT_NAME] [d/DAY] [st/HHMM] [et/HHMM] [s/SUBJECT] [tu/TUTOR_NAME] [tp/TUTOR_PHONE] [rm/ROOM] [from/HHMM to/HHMM] [sort/creation&#124;schedule]</code> | `search c/lesson tu/mei d/Mon` |
 | [Get help](#getting-help-help) | `help [COMMAND]` | `help add` |
 | Exit | `exit` | `exit` |
 
 **Notes:**
 * See [Positions and stable IDs](#positions-and-stable-ids) for how to choose `INDEX`, `STUDENT_INDEX`, and `lid/LESSON_ID`.
-* If PonHub starts in a [protected session](#if-ponhub-shows-data-file-protected), only `help`, `list`, and `exit` are available. Commands such as `clear` and `find` are not supported.
+* If PonHub starts in a [protected session](#if-ponhub-shows-data-file-protected), only `help`, `list`, and `exit` are available.
+* `clear` and `find` are not supported in any session; use the commands in this guide.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -341,7 +342,7 @@ You can copy a person's phone number, parent phone, email, or address directly f
 
 **Notes:**
 * Only the value itself is copied (for example, `91234567`), with leading zeros preserved. Fields showing `Not provided` have no **Copy** button.
-* Copying updates your system clipboard while leaving all records, active filters, card selection, and any unfinished command in the command box untouched. Pressing **Ctrl+C** (**Cmd+C** on macOS) inside the command box or feedback area still copies selected text from that area as usual.
+* Copying updates your system clipboard while leaving all records, active filters, card selection, and any unfinished command in the command box untouched. Pressing **Ctrl+C** (**Cmd+C** on macOS) inside the command box or feedback and help area still copies selected text from that area as usual.
 
 <a id="editing-a-person-edit"></a>
 
@@ -425,12 +426,12 @@ Creates a new weekly shared lesson with an empty student roster.
 
 See [Field reference](#field-reference) for the exact format of `d/`, `st/`, `et/`, `s/`, `tu/`, and `rm/`.
 
-**Example:**
+**Examples:**
 * `addlesson d/Mon st/1600 et/1730 s/A-Math tu/Mei Lim rm/B-01`
 * `addlesson d/Mon st/1600 et/1730 s/A-Math tu/Mei Lim tp/92345678 rm/B-01` (when two tutors share the name `Mei Lim`)
 
 **What you will see:**
-* Confirmation with a new stable lesson ID (such as `L1`) and an empty roster (`0` students enrolled). Creating a lesson never enrols a student automatically.
+* Confirmation with a new stable lesson ID, such as `New lesson added: L1.` The lesson card shows **Students enrolled: 0**. Creating a lesson never enrols a student automatically.
 
 **Notes:**
 * **How tutor lookup works:** The tutor must already exist in PonHub. `tu/` matches a tutor's full name, ignoring letter case (including Greek `Σ`, `σ`, and `ς`), repeated spaces, and canonical Unicode spelling differences; accents remain significant.
@@ -467,7 +468,6 @@ Supply `lid/LESSON_ID` and at least one field to change. You can edit `st/` or `
   1. Run `showlesson lid/LESSON_ID d/YYYY-MM-DD` using the lesson ID and date named in the error message to see which students (including former members) have records on that date.
   2. Run `list r/student` to find each student's current position.
   3. If you genuinely want to remove those attendance records, run [`unmark`](#removing-an-attendance-record-unmark) for each one, then retry `editlesson`.
-* This command is unavailable in a [protected session](#if-ponhub-shows-data-file-protected).
 <!-- @@author -->
 
 <a id="5-enrolling-and-unenrolling-students"></a>
@@ -555,7 +555,7 @@ Displays either the complete lesson catalogue or the lessons a single student is
 **Examples:**
 * `lessons` — shows all shared lessons in creation order, including lessons with empty rosters.
 * `lessons sort/schedule` — shows all lessons ordered from Monday to Sunday, then by start time, then by numeric lesson ID.
-* `lessons 1` — shows only the lessons currently enrolled by the student at position `1` in the people list (the older `lessons si/1` syntax also works; when combined with `sort/`, the student selector must come before `sort/creation|schedule`, as in `lessons si/1 sort/schedule`).
+* `lessons 1` — shows only the lessons that the student at position `1` in the people list is currently enrolled in (the older `lessons si/1` syntax also works; when combined with `sort/`, the student selector must come before `sort/creation|schedule`, as in `lessons si/1 sort/schedule`).
 * `lessons 1 sort/schedule` — shows that student's current timetable in weekly schedule order.
 
 **What you will see:**
@@ -779,6 +779,7 @@ Every `search` starts from the full catalogue (not by narrowing the previous sea
   * Greek sigma forms (`Σ`, `σ`, `ς`) match one another. Search does not fold `ß` to `ss` or strip accents (`José` and `Jose` differ).
   * Search does not normalize different Unicode compositions—copy the displayed spelling or search by an ASCII fragment such as `n/Jos`.
   * Because `/` introduces prefixes, values containing a slash cannot be searched in full; search by a slash-free fragment instead (such as `n/Ravi` for `Ravi s/o Kumar`, or `a/#01` for `Blk 10, #01/02`).
+  * <a id="search-name-marker-exception"></a>**Names containing `s/o` or `d/o`:** These mean “son of” and “daughter of” in names. Full-name queries containing them are rejected; use a slash-free fragment such as `n/Ravi` or `sn/Kumar`. A subject starting with the word `o` creates the same `s/o` token. Put that subject before name filters, for example `search c/student s/o level math n/Alex`, or separate it from the name with the category prefix: `search n/Alex c/student s/o level math`. Adjacent `n/Alex s/o level math` is rejected with this guidance; the existing results stay visible. This also applies to `sn/` and `tu/`. Ordinary subjects such as `s/Math` work before or after name filters.
 
 <a id="6-searching-people-and-shared-lessons"></a>
 <a id="searching-people-and-shared-lessons"></a>
@@ -809,7 +810,7 @@ Use this matrix to see which prefixes are supported for each search category (`c
 | `rm/` | Lesson room | Yes | Yes | Yes | Yes |
 | `sort/` | Lesson order: `creation` or `schedule` | — | — | — | Yes |
 
-Any unsupported, category-incompatible, blank, or repeated prefix—or any value containing a slash, line break, or invalid format—is rejected before either result panel changes.
+Any unsupported, category-incompatible, blank, or repeated prefix—or any value containing a slash, line break, or invalid format—is rejected before either result panel changes. For names containing `s/o` or `d/o`, search using a slash-free fragment such as `n/Ravi`, `sn/Ravi`, or `tu/Ravi`.
 <!-- @@author -->
 
 <a id="worked-search-example"></a>
@@ -865,7 +866,7 @@ Look up command syntax inside the app and navigate panels, history, and menus wi
 
 ### 11.1 Getting help: `help`
 
-Displays built-in command summaries and detailed command usage right in the top feedback area.
+Displays built-in command summaries and detailed command usage right in the feedback and help area.
 
 **Format:** `help [COMMAND]`
 
@@ -874,7 +875,7 @@ Displays built-in command summaries and detailed command usage right in the top 
 * `help add` (or `help ADD`) — shows full syntax, rules, and examples for `add`.
 
 **What you will see:**
-* The command catalogue or detailed usage guide in the top feedback area, scrolled to the top.
+* The command catalogue or detailed usage guide in the feedback and help area, scrolled to the top.
 
 **Notes:**
 * **Topic rules:** Command topics ignore case, and you can supply at most one topic at a time (`help add delete` is rejected as an invalid format). Asking for an unknown command such as `help remove` reports `Unknown command: 'remove'. Type 'help' to see available commands.`
@@ -903,12 +904,12 @@ Displays built-in command summaries and detailed command usage right in the top 
 
 ### 11.3 Reading long responses
 
-When `help` or another command displays a long message in the top response area:
-1. Leave the command box blank and press **Tab** past the result shortcut buttons (**All lessons**, **Student lessons**, **Attendance history**) until the response area shows an **orange focus outline**. (If you have an unfinished command in the box and **Tab** triggers command completion, press **Shift+Tab** to move focus out instead.)
+When `help` or another command displays a long message in the feedback and help area:
+1. Leave the command box blank and press **Tab** past the result shortcut buttons (**All lessons**, **Student lessons**, **Attendance history**) until the feedback and help area shows an **orange focus outline**. (If you have an unfinished command in the box and **Tab** triggers command completion, press **Shift+Tab** to move focus out instead.)
 2. Use **Up/Down** or **Page Up/Page Down** (**Fn+Up/Down** on Mac keyboards) to scroll through the text.
 3. Press **Tab** or **Shift+Tab** to return to the command box.
 
-You can also drag the horizontal divider below the response area downwards to give it more room, or select and copy text directly from it. Each new response automatically scrolls back to the top.
+You can also drag the horizontal divider below the feedback and help area downwards to give it more room, or select and copy text directly from it. Each new response automatically scrolls back to the top.
 
 <a id="using-the-menus-from-the-keyboard-on-macos"></a>
 
@@ -947,6 +948,8 @@ You can launch PonHub with a different data file inside the JAR folder (or one o
 ```text
 java -jar ponhub.jar --data="separate store/ponhub.json"
 ```
+Use the equals sign in `--data=PATH`; `--data PATH` is not valid syntax. No other launch options are supported.
+
 For safety, PonHub rejects blank paths, paths outside the JAR folder (including via symbolic links), and reserved filenames (`preferences.json`, `ponhub.log*`, legacy `addressbook.log*`, and any name ending in `.ponhub-lock`).
 
 **Backing up your data:**
@@ -1022,7 +1025,7 @@ If you must edit the file directly, **close PonHub and make a backup copy first*
 ## 13. FAQ
 
 **Q: Is there a maximum class size or a limit on total records?**<br>
-**A:** PonHub enforces no fixed cap on class size, lessons, people, or attendance records, and never trims or hides valid records as your file grows; all field, duplicate, clash, and ID-counter rules still apply. Note that this is a data-retention rule rather than a performance guarantee—response times depend on your computer and the mix of records stored.
+**A:** PonHub enforces no fixed cap on class size, lessons, people, or attendance records, and never trims or hides valid records as your file grows; all field, duplicate, clash, and ID-counter rules still apply. Response times depend on your computer and the mix of records stored.
 
 **Q: How do I move my data to another computer?**<br>
 **A:** Close PonHub on both computers. Install Java 25 and the same version of PonHub (or one that supports your data format) on the new computer, then copy your operational data file into the new `ponhub.jar` folder while preserving its relative path, or select its new location inside that folder with `--data=PATH`:
@@ -1050,7 +1053,7 @@ Keep a backup of the original folder until you have opened PonHub on the new com
 ## 14. Known issues
 
 1. **Some non-Latin characters in names may display as boxes (`□`):** If your operating system lacks a font glyph for a script you entered, the character may render as a box on screen. The exact Unicode name is still saved properly in `data/ponhub.json`.
-2. **macOS function keys and `Control+Down` in keyboard menu navigation:** On Mac keyboards where the top row defaults to media/system controls, pressing `F1` or `Control+F10` requires holding **Fn/Globe**, and pressing `Control+Down` triggers macOS Mission Control / App Exposé instead of opening a menu. Release `Control` before pressing the arrow keys (see [Using the menus from the keyboard on macOS](#using-the-menus-from-the-keyboard-on-macos)).
+2. **macOS keyboard menu navigation:** Function-key settings and system shortcuts affect menu access. Follow [Using the menus from the keyboard on macOS](#using-the-menus-from-the-keyboard-on-macos) for the key sequence and settings.
 3. **Older saved people differing only by Greek `ς` and `σ` remain separate records:** If a data file created in an earlier build contains two records whose names differ only by Greek final/non-final sigma (`ς` vs `σ`) with the same phone number, PonHub keeps both existing records and their IDs intact on load. To resolve the duplicate identity, use [`edit`](#editing-a-person-edit) to give one record a distinct name or identifying phone number.
 
 --------------------------------------------------------------------------------------------------------------------
@@ -1077,6 +1080,10 @@ The following features are planned for future versions and are not in PonHub v1.
 
 The {% include command-list.html key="record-validation" label="commands that create or edit records" %} and PonHub's startup file loader validate values against the rules below.
 
+In `editlesson`, a standalone lowercase `s/o` inside `tu/` is read as a legal-name marker. When the subject begins with lowercase `o` followed by a space (or is just `o`), put `s/` before `tu/`; for example, `editlesson lid/L1 s/o level math tu/Bob Ong`.
+
+In `addlesson`, when no separate `s/` is supplied, the last standalone lowercase `s/o` inside `tu/` starts the required subject. With a separate `s/` prefix, `s/o` and `d/o` remain part of the tutor's name.
+
 | Field | Prefix | Accepted values and rules |
 | --- | --- | --- |
 | **Role** | `r/` | `student`, `tutor`, or `parent` (case-insensitive). |
@@ -1085,8 +1092,8 @@ The {% include command-list.html key="record-validation" label="commands that cr
 | **Email** | `e/` | Up to 254 characters (`local-part@domain`), with no spaces. The local part may use English letters, digits, `.`, `_`, `'`, `%`, `+`, and `-` (cannot start/end with `.` or have `..`). The domain must have at least two dot-separated labels of letters, digits, and internal hyphens, ending with a 2–63-letter top-level label (e.g., `sean.o'connor@example.com`). Case is preserved. |
 | **Address** | `a/` | 1–200 printable ASCII characters after trimming and collapsing repeated spaces. A slash (`/`) is allowed **only** with a digit immediately on both sides (so `Blk 10, #01/02`, `Blk 12/34`, and `Block A12/34B` are accepted, while `A/B`, `/`, and `#01//02` are rejected). |
 | **Education level** | `l/` | `P1`–`P6`, `S1`–`S5`, `JC1`, or `JC2` (case-insensitive, displayed in uppercase). Students only. |
-| **Subject** | `s/` | 1–50 characters using Unicode letters or digits, with single spaces or single hyphens between non-empty parts (e.g., `Math`, `Primary 5 Math`, `A-Math`). No leading, trailing, or repeated hyphens. |
-| **Room** | `rm/` | 1–10 characters in total (including hyphens), using letters or digits with optional single hyphens between parts (e.g., `R1`, `B-01`). Stored and displayed in uppercase, so `b-01` and `B-01` refer to the same room. No spaces. |
+| **Subject** | `s/` | 1–50 Unicode code points after space and NFC normalization, including spaces, hyphens and attached combining marks. Use Unicode letters with combining marks attached to letters, or digits, with single spaces or single hyphens between non-empty parts (e.g., `Math`, `Primary 5 Math`, `A-Math`, `தமிழ்`, `हिंदी`, `Français`). No leading, trailing, or repeated hyphens. |
+| **Room** | `rm/` | 1–10 characters in total (including hyphens), using English letters (A–Z, a–z) or digits (0–9) with optional single hyphens between parts (e.g., `R1`, `B-01`). Non-English letters such as `ß` are rejected. Stored and displayed in uppercase, so `b-01` and `B-01` refer to the same room. No spaces. |
 | **Weekday** | `d/` | `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, or `Sun` (case-insensitive). |
 | **Start / End time** | `st/`, `et/`, `from/`, `to/` | 4-digit, 24-hour `HHMM` time (`0000`–`2359`), with start earlier than end on the same day. |
 | **Attendance date** | `d/` | Real calendar date in `YYYY-MM-DD` format (years `0001`–`9999`). For `mark`, `unmark`, and `showlesson`, the date must fall on the lesson's weekday. |
@@ -1107,10 +1114,10 @@ The {% include command-list.html key="record-validation" label="commands that cr
 * **Stable ID:** The permanent identifier PonHub assigns to each record when it is created (`S1` for a student, `T1` for a tutor, `P1` for a parent, `L1` for a lesson). Stable IDs never change and are never reused after deletion.
 * **Unrecorded:** A dated lesson occurrence for which no `present` or `absent` entry has been marked (or after an entry is removed with `unmark`). Unrecorded occurrences are never treated as absences.
 
-<!-- Navigation reorganization by Vincent Lin with OpenAI Codex assistance (#601).
-     UG skeleton and reading-order design (#619): Zhu Zhi Yu (ultramanarm).
-     UG reorder and rewrite (#621): Ernest Chua (ErnestChuaa).
-     Original feature credits remain in their bounded author blocks and source history.
-     Retained #595 Greek-name, legacy-identity and Tutor-disambiguation guidance: Zhu Zhi Yu (ultramanarm).
-     Retained lesson-editing/deletion and future-scope contributions: Ernest Chua (ErnestChuaa).
-     Retained lesson-editing contribution: Yang Shuo (ys000009). -->
+<!-- Guide navigation: Vincent Lin (gugrusaurus), with OpenAI Codex assistance.
+     Guide structure: Zhu Zhi Yu (ultramanarm).
+     Guide prose: Ernest Chua (ErnestChuaa).
+     Greek-name, legacy-identity and Tutor-disambiguation guidance: Zhu Zhi Yu (ultramanarm).
+     Lesson-editing/deletion and future-scope contributions: Ernest Chua (ErnestChuaa).
+     Lesson-editing contribution: Yang Shuo (ys000009).
+     Feature credits remain in the bounded author blocks. -->
